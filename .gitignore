@@ -1,0 +1,36 @@
+# Byte compiled
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# OS files
+.DS_Store
+
+# Pytest cache
+.pytest_cache/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Local Claude/Codex project guidance
+.claude/
+CLAUDE.md
+
+# Local cloud and project notes
+.cloud/
+cloud.md
+
+# Frontend dependencies and generated output
+node_modules/
+dist/
+coverage/
+
+# Tool caches
+.vite/
