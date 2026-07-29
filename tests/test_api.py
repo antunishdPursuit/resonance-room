@@ -27,7 +27,7 @@ def test_chat_uses_fallback_without_provider_keys(monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["response"]
-    assert len(response.json()["recommendations"]) == 5
+    assert len(response.json()["recommendations"]) == 6
 
 
 @pytest.mark.parametrize(

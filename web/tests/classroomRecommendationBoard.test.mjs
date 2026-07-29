@@ -5,7 +5,7 @@ import {
   formatRecommendationBoardRows,
 } from '../src/classroom/classroomRecommendationBoard.js'
 
-test('lays out up to five recommendations in two columns', () => {
+test('lays out up to six recommendations in two columns', () => {
   const rows = formatRecommendationBoardRows([
     { title: 'One', artist: 'Artist 1' },
     { title: 'Two', artist: 'Artist 2' },
@@ -13,6 +13,7 @@ test('lays out up to five recommendations in two columns', () => {
     { title: 'Four', artist: 'Artist 4' },
     { title: 'Five', artist: 'Artist 5' },
     { title: 'Six', artist: 'Artist 6' },
+    { title: 'Seven', artist: 'Artist 7' },
   ])
 
   assert.deepEqual(
@@ -23,6 +24,7 @@ test('lays out up to five recommendations in two columns', () => {
       { index: 3, column: 0, row: 2 },
       { index: 4, column: 1, row: 0 },
       { index: 5, column: 1, row: 1 },
+      { index: 6, column: 1, row: 2 },
     ],
   )
 })

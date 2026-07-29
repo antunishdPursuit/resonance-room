@@ -2,7 +2,7 @@ import * as THREE from 'three'
 
 const CANVAS_WIDTH = 2048
 const CANVAS_HEIGHT = 640
-const MAX_RECOMMENDATIONS = 5
+const MAX_RECOMMENDATIONS = 6
 
 export const RECOMMENDATION_BOARD_PLACEMENT = Object.freeze({
   position: Object.freeze([0.159, 1.648, 4.58]),
