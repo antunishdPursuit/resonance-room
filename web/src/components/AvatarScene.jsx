@@ -29,6 +29,16 @@ import { createAvatarMovementController } from '../classroom/avatarMovementContr
 import {
   createClassroomRecommendationBoard,
 } from '../classroom/classroomRecommendationBoard.js'
+import {
+  createClassroomRecommendationBoardInteraction,
+  getBoardInteractionMinimumZ,
+  isBoardInteractionEnabled,
+} from '../classroom/classroomRecommendationBoardInteraction.js'
+import {
+  isSongSelected,
+  removeSongSelection,
+  toggleSongSelection,
+} from '../ui/songSelection.js'
 import { calculateSpeechBubblePosition } from '../ui/speechBubblePosition.js'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8001').replace(/\/$/, '')
@@ -102,12 +112,17 @@ export default function AvatarScene() {
   const [openingGreetingReady, setOpeningGreetingReady] = useState(false)
   const messagesRef      = useRef([])
   const recommendationsRef = useRef([])
+  const pickedSongsRef = useRef([])
   const voiceEnabledRef  = useRef(true)
   const useElevenlabsRef = useRef(true)
 
   useEffect(() => { messagesRef.current      = messages      }, [messages])
   useEffect(() => { voiceEnabledRef.current  = voiceEnabled  }, [voiceEnabled])
   useEffect(() => { useElevenlabsRef.current = useElevenLabs }, [useElevenLabs])
+  useEffect(() => {
+    pickedSongsRef.current = pickedSongs
+    recommendationBoardRef.current?.setSelectedSongs(pickedSongs)
+  }, [pickedSongs])
 
   const chatLimitReached = messages.length >= MAX_CHAT_MESSAGES
   const latestEsmeMessage = messages.slice().reverse().find(message => message.role === 'assistant')
@@ -176,6 +191,7 @@ export default function AvatarScene() {
     let collisionDebugView = null
     let animationController = null
     let recommendationBoard = null
+    let recommendationBoardInteraction = null
     const previewActions = new Map()
     const previewLoads = new Map()
 
@@ -283,11 +299,27 @@ export default function AvatarScene() {
         scene.add(gltf.scene)
         recommendationBoard = createClassroomRecommendationBoard()
         recommendationBoard.update(recommendationsRef.current)
+        recommendationBoard.setSelectedSongs(pickedSongsRef.current)
         recommendationBoardRef.current = recommendationBoard
         scene.add(recommendationBoard.object3d)
         movementEnvironment = createClassroomMovementEnvironment({
           classroomRoot: gltf.scene,
           parser: gltf.parser,
+        })
+        const boardInteractionMinimumZ = getBoardInteractionMinimumZ(
+          movementEnvironment.deskZones,
+        )
+        recommendationBoardInteraction = createClassroomRecommendationBoardInteraction({
+          canvas,
+          camera,
+          board: recommendationBoard,
+          isInteractionEnabled: () => isBoardInteractionEnabled(
+            vrmRef.current?.scene.position,
+            boardInteractionMinimumZ,
+          ),
+          onToggleSong: song => {
+            setPickedSongs(prev => toggleSongSelection(prev, song))
+          },
         })
         if (COLLISION_DEBUG_ENABLED) {
           collisionDebugView = createCollisionDebugView(
@@ -551,6 +583,7 @@ export default function AvatarScene() {
         moving: false,
         running: false,
       }
+      recommendationBoardInteraction?.update()
       if (vrm) {
         animationController?.setMoving(
           movement.moving,
@@ -618,6 +651,7 @@ export default function AvatarScene() {
       openingGreetingActionRef.current = null
       delete window.__ESME_MOVEMENT__
       collisionDebugView?.dispose()
+      recommendationBoardInteraction?.dispose()
       if (recommendationBoard) {
         scene.remove(recommendationBoard.object3d)
         recommendationBoard.dispose()
@@ -728,19 +762,16 @@ export default function AvatarScene() {
     if (e.key === 'Enter') handleSend()
   }
 
-  function addPick(song) {
-    setPickedSongs(prev => {
-      if (prev.some(s => s.title === song.title && s.artist === song.artist)) return prev
-      return [...prev, song]
-    })
+  function togglePick(song) {
+    setPickedSongs(prev => toggleSongSelection(prev, song))
   }
 
-  function removePick(index) {
-    setPickedSongs(prev => prev.filter((_, i) => i !== index))
+  function removePick(song) {
+    setPickedSongs(prev => removeSongSelection(prev, song))
   }
 
   function isPicked(song) {
-    return pickedSongs.some(s => s.title === song.title && s.artist === song.artist)
+    return isSongSelected(pickedSongs, song)
   }
 
   return (
@@ -825,7 +856,7 @@ export default function AvatarScene() {
           </div>
         )}
 
-        {pickedSongs.map((s, i) => {
+        {pickedSongs.map((s) => {
           const safeUrl = safeLastFmUrl(s.url)
           const SongDetails = safeUrl ? 'a' : 'div'
           return (
@@ -853,8 +884,9 @@ export default function AvatarScene() {
             </SongDetails>
             <button
               className="icon-button"
-              onClick={() => removePick(i)}
-              title="Remove"
+              onClick={() => removePick(s)}
+              title={`Remove ${s.title} by ${s.artist}`}
+              aria-label={`Remove ${s.title} by ${s.artist} from liked songs`}
               style={{
                 background: 'none',
                 border:     'none',
@@ -961,17 +993,19 @@ export default function AvatarScene() {
                       <span style={{ fontSize: 11, opacity: 0.7 }}>{s.artist}</span>
                     </div>
                     <button
-                      onClick={() => addPick(s)}
-                      title={isPicked(s) ? 'Already picked' : 'Add to picks'}
+                      onClick={() => togglePick(s)}
+                      title={isPicked(s) ? `Unlike ${s.title} by ${s.artist}` : `Like ${s.title} by ${s.artist}`}
+                      aria-label={isPicked(s) ? `Unlike ${s.title} by ${s.artist}` : `Like ${s.title} by ${s.artist}`}
+                      aria-pressed={isPicked(s)}
                       style={{
                         background: 'none',
                         border:     'none',
-                        cursor:     isPicked(s) ? 'default' : 'pointer',
+                        cursor:     'pointer',
                         fontSize:   18,
                         padding:    '4px',
                         lineHeight: 1,
                         color:      isPicked(s) ? '#f472b6' : '#f9a8d4',
-                        opacity:    isPicked(s) ? 0.5 : 1,
+                        opacity:    1,
                         textShadow: '0 0 4px rgba(0,0,0,0.8)',
                         flexShrink: 0,
                       }}
