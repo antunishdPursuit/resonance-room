@@ -44,7 +44,7 @@ def _fallback_recommend(message: str) -> dict:
             profile = candidate
             break
 
-    results = recommend_songs(profile, _SONGS, k=5)
+    results = recommend_songs(profile, _SONGS, k=6)
     intro   = _FALLBACK_INTROS.get(profile["name"], "Here are some tracks I think you'll enjoy!")
     titles  = " and ".join(f'"{s["title"]}"' for s, _, _ in results[:2])
     response_text = f"{intro} I'd start with {titles}."
@@ -136,7 +136,7 @@ MUSIC_KEYWORDS = {
 }
 
 
-async def fetch_tracks(tag: str, limit: int = 5) -> list:
+async def fetch_tracks(tag: str, limit: int = 6) -> list:
     """Call Last.fm tag.gettoptracks and return the track list."""
     api_key = os.getenv("LASTFM_API_KEY")
     try:
@@ -314,7 +314,7 @@ async def tts(req: TTSRequest):
 class RecommendRequest(BaseModel):
     genre: Annotated[str, Field(min_length=1, max_length=100)]
     mood:  Optional[Annotated[str, Field(min_length=1, max_length=100)]] = None
-    limit: Annotated[int, Field(ge=1, le=10)] = 5
+    limit: Annotated[int, Field(ge=1, le=10)] = 6
 
 
 @app.post("/recommend")

@@ -26,6 +26,9 @@ import {
   createCollisionDebugView,
 } from '../classroom/classroomMovementEnvironment.js'
 import { createAvatarMovementController } from '../classroom/avatarMovementController.js'
+import {
+  createClassroomRecommendationBoard,
+} from '../classroom/classroomRecommendationBoard.js'
 import { calculateSpeechBubblePosition } from '../ui/speechBubblePosition.js'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8001').replace(/\/$/, '')
@@ -70,6 +73,7 @@ export default function AvatarScene() {
   const analyserRef     = useRef(null)
   const analyserDataRef = useRef(null)
   const classroomInspectorRef = useRef(null)
+  const recommendationBoardRef = useRef(null)
   const resetCameraRef = useRef(null)
   const animationPreviewRef = useRef(null)
   const animationControllerRef = useRef(null)
@@ -97,6 +101,7 @@ export default function AvatarScene() {
   const [animationPreviewStatus, setAnimationPreviewStatus] = useState('Loading animations…')
   const [openingGreetingReady, setOpeningGreetingReady] = useState(false)
   const messagesRef      = useRef([])
+  const recommendationsRef = useRef([])
   const voiceEnabledRef  = useRef(true)
   const useElevenlabsRef = useRef(true)
 
@@ -106,6 +111,16 @@ export default function AvatarScene() {
 
   const chatLimitReached = messages.length >= MAX_CHAT_MESSAGES
   const latestEsmeMessage = messages.slice().reverse().find(message => message.role === 'assistant')
+  const latestRecommendationMessage = messages
+    .slice()
+    .reverse()
+    .find(message => Array.isArray(message.songs) && message.songs.length > 0)
+  const latestRecommendations = latestRecommendationMessage?.songs ?? []
+
+  useEffect(() => {
+    recommendationsRef.current = latestRecommendations
+    recommendationBoardRef.current?.update(latestRecommendations)
+  }, [latestRecommendationMessage])
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/tts/available`)
@@ -160,6 +175,7 @@ export default function AvatarScene() {
     let movementController = null
     let collisionDebugView = null
     let animationController = null
+    let recommendationBoard = null
     const previewActions = new Map()
     const previewLoads = new Map()
 
@@ -265,6 +281,10 @@ export default function AvatarScene() {
         if (disposed) return
 
         scene.add(gltf.scene)
+        recommendationBoard = createClassroomRecommendationBoard()
+        recommendationBoard.update(recommendationsRef.current)
+        recommendationBoardRef.current = recommendationBoard
+        scene.add(recommendationBoard.object3d)
         movementEnvironment = createClassroomMovementEnvironment({
           classroomRoot: gltf.scene,
           parser: gltf.parser,
@@ -598,6 +618,11 @@ export default function AvatarScene() {
       openingGreetingActionRef.current = null
       delete window.__ESME_MOVEMENT__
       collisionDebugView?.dispose()
+      if (recommendationBoard) {
+        scene.remove(recommendationBoard.object3d)
+        recommendationBoard.dispose()
+      }
+      recommendationBoardRef.current = null
       renderer.dispose()
     }
   }, [])
