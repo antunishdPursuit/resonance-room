@@ -1,6 +1,33 @@
 import * as THREE from 'three'
 
 const CLICK_MOVEMENT_THRESHOLD = 4
+const DEFAULT_DESK_ROW_CLEARANCE = 0.1
+
+export function getBoardInteractionMinimumZ(
+  deskZones,
+  clearance = DEFAULT_DESK_ROW_CLEARANCE,
+) {
+  const maximumDeskZ = Array.isArray(deskZones)
+    ? Math.max(
+      ...deskZones
+        .map(zone => zone?.bounds?.max?.z)
+        .filter(Number.isFinite),
+    )
+    : -Infinity
+
+  return Number.isFinite(maximumDeskZ)
+    ? maximumDeskZ + clearance
+    : Infinity
+}
+
+export function isBoardInteractionEnabled(avatarPosition, minimumZ) {
+  return Boolean(
+    avatarPosition
+    && Number.isFinite(avatarPosition.z)
+    && Number.isFinite(minimumZ)
+    && avatarPosition.z >= minimumZ
+  )
+}
 
 export function movedBeyondClickThreshold(
   start,
@@ -33,13 +60,29 @@ export function createClassroomRecommendationBoardInteraction({
   camera,
   board,
   onToggleSong,
+  isInteractionEnabled = () => true,
 }) {
   const raycaster = new THREE.Raycaster()
   const pointer = new THREE.Vector2()
   const initialCursor = canvas.style.cursor
   let pointerStart = null
+  let interactionEnabled = Boolean(isInteractionEnabled())
+
+  function updateAvailability() {
+    const nextInteractionEnabled = Boolean(isInteractionEnabled())
+    if (nextInteractionEnabled === interactionEnabled) return
+
+    interactionEnabled = nextInteractionEnabled
+    if (!interactionEnabled) {
+      pointerStart = null
+      showHitTarget(null)
+    }
+  }
 
   function findHitTarget(event) {
+    updateAvailability()
+    if (!interactionEnabled) return null
+
     const bounds = canvas.getBoundingClientRect()
     if (bounds.width <= 0 || bounds.height <= 0) return null
 
@@ -119,6 +162,7 @@ export function createClassroomRecommendationBoardInteraction({
   canvas.addEventListener('pointerleave', clearHover)
 
   return {
+    update: updateAvailability,
     dispose() {
       canvas.removeEventListener('pointerdown', startSelection)
       canvas.removeEventListener('pointermove', trackSelection)

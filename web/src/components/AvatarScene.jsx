@@ -31,6 +31,8 @@ import {
 } from '../classroom/classroomRecommendationBoard.js'
 import {
   createClassroomRecommendationBoardInteraction,
+  getBoardInteractionMinimumZ,
+  isBoardInteractionEnabled,
 } from '../classroom/classroomRecommendationBoardInteraction.js'
 import {
   isSongSelected,
@@ -300,17 +302,24 @@ export default function AvatarScene() {
         recommendationBoard.setSelectedSongs(pickedSongsRef.current)
         recommendationBoardRef.current = recommendationBoard
         scene.add(recommendationBoard.object3d)
+        movementEnvironment = createClassroomMovementEnvironment({
+          classroomRoot: gltf.scene,
+          parser: gltf.parser,
+        })
+        const boardInteractionMinimumZ = getBoardInteractionMinimumZ(
+          movementEnvironment.deskZones,
+        )
         recommendationBoardInteraction = createClassroomRecommendationBoardInteraction({
           canvas,
           camera,
           board: recommendationBoard,
+          isInteractionEnabled: () => isBoardInteractionEnabled(
+            vrmRef.current?.scene.position,
+            boardInteractionMinimumZ,
+          ),
           onToggleSong: song => {
             setPickedSongs(prev => toggleSongSelection(prev, song))
           },
-        })
-        movementEnvironment = createClassroomMovementEnvironment({
-          classroomRoot: gltf.scene,
-          parser: gltf.parser,
         })
         if (COLLISION_DEBUG_ENABLED) {
           collisionDebugView = createCollisionDebugView(
@@ -574,6 +583,7 @@ export default function AvatarScene() {
         moving: false,
         running: false,
       }
+      recommendationBoardInteraction?.update()
       if (vrm) {
         animationController?.setMoving(
           movement.moving,
