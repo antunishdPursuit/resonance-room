@@ -30,6 +30,9 @@ import {
   createClassroomRecommendationBoard,
 } from '../classroom/classroomRecommendationBoard.js'
 import {
+  createClassroomRecommendationBoardInteraction,
+} from '../classroom/classroomRecommendationBoardInteraction.js'
+import {
   isSongSelected,
   removeSongSelection,
   toggleSongSelection,
@@ -107,12 +110,17 @@ export default function AvatarScene() {
   const [openingGreetingReady, setOpeningGreetingReady] = useState(false)
   const messagesRef      = useRef([])
   const recommendationsRef = useRef([])
+  const pickedSongsRef = useRef([])
   const voiceEnabledRef  = useRef(true)
   const useElevenlabsRef = useRef(true)
 
   useEffect(() => { messagesRef.current      = messages      }, [messages])
   useEffect(() => { voiceEnabledRef.current  = voiceEnabled  }, [voiceEnabled])
   useEffect(() => { useElevenlabsRef.current = useElevenLabs }, [useElevenLabs])
+  useEffect(() => {
+    pickedSongsRef.current = pickedSongs
+    recommendationBoardRef.current?.setSelectedSongs(pickedSongs)
+  }, [pickedSongs])
 
   const chatLimitReached = messages.length >= MAX_CHAT_MESSAGES
   const latestEsmeMessage = messages.slice().reverse().find(message => message.role === 'assistant')
@@ -181,6 +189,7 @@ export default function AvatarScene() {
     let collisionDebugView = null
     let animationController = null
     let recommendationBoard = null
+    let recommendationBoardInteraction = null
     const previewActions = new Map()
     const previewLoads = new Map()
 
@@ -288,8 +297,17 @@ export default function AvatarScene() {
         scene.add(gltf.scene)
         recommendationBoard = createClassroomRecommendationBoard()
         recommendationBoard.update(recommendationsRef.current)
+        recommendationBoard.setSelectedSongs(pickedSongsRef.current)
         recommendationBoardRef.current = recommendationBoard
         scene.add(recommendationBoard.object3d)
+        recommendationBoardInteraction = createClassroomRecommendationBoardInteraction({
+          canvas,
+          camera,
+          board: recommendationBoard,
+          onToggleSong: song => {
+            setPickedSongs(prev => toggleSongSelection(prev, song))
+          },
+        })
         movementEnvironment = createClassroomMovementEnvironment({
           classroomRoot: gltf.scene,
           parser: gltf.parser,
@@ -623,6 +641,7 @@ export default function AvatarScene() {
       openingGreetingActionRef.current = null
       delete window.__ESME_MOVEMENT__
       collisionDebugView?.dispose()
+      recommendationBoardInteraction?.dispose()
       if (recommendationBoard) {
         scene.remove(recommendationBoard.object3d)
         recommendationBoard.dispose()

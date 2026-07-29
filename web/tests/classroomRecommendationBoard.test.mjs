@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   formatRecommendationBoardRows,
+  getRecommendationBoardRowPlacement,
 } from '../src/classroom/classroomRecommendationBoard.js'
 
 test('lays out up to six recommendations in two columns', () => {
@@ -27,6 +28,24 @@ test('lays out up to six recommendations in two columns', () => {
       { index: 6, column: 1, row: 2 },
     ],
   )
+})
+
+test('keeps each displayed row connected to its source song', () => {
+  const song = { title: 'One', artist: 'Artist 1', url: 'https://example.com' }
+  const [row] = formatRecommendationBoardRows([song])
+
+  assert.equal(row.song, song)
+})
+
+test('maps the two canvas columns to distinct Three.js hit areas', () => {
+  const left = getRecommendationBoardRowPlacement({ column: 0, row: 0 })
+  const right = getRecommendationBoardRowPlacement({ column: 1, row: 0 })
+  const lower = getRecommendationBoardRowPlacement({ column: 0, row: 2 })
+
+  assert.ok(left.centerX < right.centerX)
+  assert.ok(left.centerY > lower.centerY)
+  assert.ok(left.width > 0)
+  assert.ok(left.height > 0)
 })
 
 test('normalizes incomplete labels and shortens long board text', () => {
