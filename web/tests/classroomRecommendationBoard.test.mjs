@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   formatRecommendationBoardRows,
+  getRecommendationBoardPrompt,
   getRecommendationBoardRowPlacement,
 } from '../src/classroom/classroomRecommendationBoard.js'
 
@@ -63,4 +64,12 @@ test('normalizes incomplete labels and shortens long board text', () => {
 test('returns no rows when recommendations are unavailable', () => {
   assert.deepEqual(formatRecommendationBoardRows(null), [])
   assert.deepEqual(formatRecommendationBoardRows([]), [])
+})
+
+test('shows the proximity prompt only when board interaction is unavailable', () => {
+  assert.equal(
+    getRecommendationBoardPrompt(false),
+    'MOVE CLOSER TO INTERACT',
+  )
+  assert.equal(getRecommendationBoardPrompt(true), '')
 })

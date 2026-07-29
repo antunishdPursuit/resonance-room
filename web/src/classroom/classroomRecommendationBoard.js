@@ -54,7 +54,17 @@ export function getRecommendationBoardRowPlacement(row) {
   }
 }
 
-function drawBoard(context, rows, hoveredRowIndex, selectedSongs) {
+export function getRecommendationBoardPrompt(interactionEnabled) {
+  return interactionEnabled ? '' : 'MOVE CLOSER TO INTERACT'
+}
+
+function drawBoard(
+  context,
+  rows,
+  hoveredRowIndex,
+  selectedSongs,
+  interactionEnabled,
+) {
   context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
   if (rows.length === 0) return
 
@@ -66,6 +76,14 @@ function drawBoard(context, rows, hoveredRowIndex, selectedSongs) {
   context.font = '700 48px Arial, sans-serif'
   context.textAlign = 'center'
   context.fillText("ESME'S PICKS", CANVAS_WIDTH / 2, 58)
+
+  const prompt = getRecommendationBoardPrompt(interactionEnabled)
+  if (prompt) {
+    context.shadowBlur = 4
+    context.fillStyle = 'rgba(243, 215, 229, 0.78)'
+    context.font = '600 24px Arial, sans-serif'
+    context.fillText(prompt, CANVAS_WIDTH / 2, 104)
+  }
 
   rows.forEach((row, rowIndex) => {
     const x = COLUMN_X[row.column]
@@ -179,9 +197,16 @@ export function createClassroomRecommendationBoard() {
   let rows = []
   let hoveredRowIndex = null
   let selectedSongs = []
+  let interactionEnabled = true
 
   function redraw() {
-    drawBoard(context, rows, hoveredRowIndex, selectedSongs)
+    drawBoard(
+      context,
+      rows,
+      hoveredRowIndex,
+      selectedSongs,
+      interactionEnabled,
+    )
     texture.needsUpdate = true
   }
 
@@ -213,6 +238,12 @@ export function createClassroomRecommendationBoard() {
     },
     setSelectedSongs(songs) {
       selectedSongs = Array.isArray(songs) ? songs : []
+      redraw()
+    },
+    setInteractionEnabled(enabled) {
+      const nextInteractionEnabled = Boolean(enabled)
+      if (interactionEnabled === nextInteractionEnabled) return
+      interactionEnabled = nextInteractionEnabled
       redraw()
     },
     dispose() {

@@ -67,12 +67,14 @@ export function createClassroomRecommendationBoardInteraction({
   const initialCursor = canvas.style.cursor
   let pointerStart = null
   let interactionEnabled = Boolean(isInteractionEnabled())
+  board.setInteractionEnabled?.(interactionEnabled)
 
   function updateAvailability() {
     const nextInteractionEnabled = Boolean(isInteractionEnabled())
     if (nextInteractionEnabled === interactionEnabled) return
 
     interactionEnabled = nextInteractionEnabled
+    board.setInteractionEnabled?.(interactionEnabled)
     if (!interactionEnabled) {
       pointerStart = null
       showHitTarget(null)
