@@ -33,8 +33,11 @@ import {
   createClassroomRecommendationBoard,
 } from '../classroom/classroomRecommendationBoard.js'
 import {
+  OPENING_FADE_DURATION_MS,
+  OPENING_GREETING_REVEAL_DELAY_MS,
   positionOpeningAvatar,
   positionOpeningCamera,
+  shouldStartOpeningGreeting,
 } from '../classroom/classroomOpeningSequence.js'
 import {
   createClassroomRecommendationBoardInteraction,
@@ -114,6 +117,7 @@ export default function AvatarScene() {
   const [loopVrmaPreview, setLoopVrmaPreview] = useState(false)
   const [animationPreviewReady, setAnimationPreviewReady] = useState(false)
   const [animationPreviewStatus, setAnimationPreviewStatus] = useState('Loading animations…')
+  const [classroomReady, setClassroomReady] = useState(false)
   const [openingGreetingReady, setOpeningGreetingReady] = useState(false)
   const messagesRef      = useRef([])
   const recommendationsRef = useRef([])
@@ -163,17 +167,11 @@ export default function AvatarScene() {
   }, [pickedSongs])
 
   useEffect(() => {
-    const fadeTimer = setTimeout(() => setLoaderFading(true), 3000)
-    const hideTimer = setTimeout(() => setLoaderVisible(false), 3600)
-    return () => { clearTimeout(fadeTimer); clearTimeout(hideTimer) }
-  }, [])
-
-  useEffect(() => {
-    if (
-      loaderVisible
-      || !openingGreetingReady
-      || openingGreetingPlayedRef.current
-    ) {
+    if (!shouldStartOpeningGreeting({
+      classroomReady,
+      greetingReady: openingGreetingReady,
+      greetingPlayed: openingGreetingPlayedRef.current,
+    })) {
       return
     }
 
@@ -183,8 +181,20 @@ export default function AvatarScene() {
         openingGreetingActionRef.current,
       )
     }
-    speakRef.current?.(WELCOME_PROMPT)
-  }, [loaderVisible, openingGreetingReady])
+    speak(WELCOME_PROMPT)
+    const fadeTimer = setTimeout(
+      () => setLoaderFading(true),
+      OPENING_GREETING_REVEAL_DELAY_MS,
+    )
+    const hideTimer = setTimeout(
+      () => setLoaderVisible(false),
+      OPENING_GREETING_REVEAL_DELAY_MS + OPENING_FADE_DURATION_MS,
+    )
+    return () => {
+      clearTimeout(fadeTimer)
+      clearTimeout(hideTimer)
+    }
+  }, [classroomReady, openingGreetingReady])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -354,6 +364,7 @@ export default function AvatarScene() {
         }
         startOcclusionIfReady()
         startMovementIfReady()
+        setClassroomReady(true)
 
         if (CLASSROOM_INSPECTION_ENABLED) {
           classroomInspector = createClassroomInspector({
@@ -380,7 +391,10 @@ export default function AvatarScene() {
       },
       undefined,
       (err) => {
-        if (!disposed) console.error('Classroom load error:', err)
+        if (!disposed) {
+          console.error('Classroom load error:', err)
+          setClassroomReady(true)
+        }
       },
     )
 
@@ -495,7 +509,11 @@ export default function AvatarScene() {
                   setOpeningGreetingReady(true)
                 }
               })
-              .catch(error => console.error('Opening greeting load error:', error))
+              .catch((error) => {
+                if (disposed) return
+                console.error('Opening greeting load error:', error)
+                setOpeningGreetingReady(true)
+              })
 
             if (ANIMATION_PREVIEW_ENABLED) {
               previewActions.set('Idle_Loop', coreActions.idle)
