@@ -11,7 +11,7 @@ import { createBlinkState, updateBlink } from '../animations/idle.js'
 import { createHumanoidAnimationClip } from '../animations/createHumanoidAnimation.js'
 import { createAvatarAnimationController } from '../animations/avatarAnimationController.js'
 import { disableUnwantedSpringBones } from '../animations/avatarPhysics.js'
-import { createWaveState, triggerWave, applyRestPose, updateWave } from '../animations/wave.js'
+import { applyRestPose } from '../animations/avatarRestPose.js'
 import { createLipSyncState, startSpeaking, stopSpeaking, updateLipSync } from '../animations/lipsync.js'
 import {
   createSpeakingFaceState,
@@ -32,6 +32,13 @@ import {
 import {
   createClassroomRecommendationBoard,
 } from '../classroom/classroomRecommendationBoard.js'
+import {
+  OPENING_FADE_DURATION_MS,
+  OPENING_GREETING_REVEAL_DELAY_MS,
+  positionOpeningAvatar,
+  positionOpeningCamera,
+  shouldStartOpeningGreeting,
+} from '../classroom/classroomOpeningSequence.js'
 import {
   createClassroomRecommendationBoardInteraction,
   getBoardInteractionMinimumZ,
@@ -76,8 +83,6 @@ export default function AvatarScene() {
   const canvasRef  = useRef(null)
   const vrmRef     = useRef(null)
   const mixerRef   = useRef(null)
-  const waveRef         = useRef(createWaveState())
-  const triggerRef      = useRef(null)
   const speakRef        = useRef(null)
   const inputRef        = useRef(null)
   const speechBubbleRef = useRef(null)
@@ -98,10 +103,10 @@ export default function AvatarScene() {
   const [loaderVisible, setLoaderVisible] = useState(true)
   const [loaderFading,  setLoaderFading]  = useState(false)
   const [profileBuilt,       setProfileBuilt]       = useState(false)
-  const [voiceEnabled,       setVoiceEnabled]       = useState(true)
+  const [voiceEnabled,       setVoiceEnabled]       = useState(false)
   const [useElevenLabs,      setUseElevenLabs]      = useState(false)
   const [elevenLabsAvailable, setElevenLabsAvailable] = useState(false)
-  const [transcriptOpen,     setTranscriptOpen]     = useState(false)
+  const [transcriptOpen,     setTranscriptOpen]     = useState(true)
   const [inspectedClassroomMesh, setInspectedClassroomMesh] = useState(null)
   const [classroomInventory, setClassroomInventory] = useState([])
   const [classroomCollisionZones, setClassroomCollisionZones] = useState([])
@@ -112,11 +117,12 @@ export default function AvatarScene() {
   const [loopVrmaPreview, setLoopVrmaPreview] = useState(false)
   const [animationPreviewReady, setAnimationPreviewReady] = useState(false)
   const [animationPreviewStatus, setAnimationPreviewStatus] = useState('Loading animations…')
+  const [classroomReady, setClassroomReady] = useState(false)
   const [openingGreetingReady, setOpeningGreetingReady] = useState(false)
   const messagesRef      = useRef([])
   const recommendationsRef = useRef([])
   const pickedSongsRef = useRef([])
-  const voiceEnabledRef  = useRef(true)
+  const voiceEnabledRef  = useRef(false)
   const useElevenlabsRef = useRef(true)
 
   useEffect(() => { messagesRef.current      = messages      }, [messages])
@@ -161,17 +167,11 @@ export default function AvatarScene() {
   }, [pickedSongs])
 
   useEffect(() => {
-    const fadeTimer = setTimeout(() => setLoaderFading(true), 3000)
-    const hideTimer = setTimeout(() => setLoaderVisible(false), 3600)
-    return () => { clearTimeout(fadeTimer); clearTimeout(hideTimer) }
-  }, [])
-
-  useEffect(() => {
-    if (
-      loaderVisible
-      || !openingGreetingReady
-      || openingGreetingPlayedRef.current
-    ) {
+    if (!shouldStartOpeningGreeting({
+      classroomReady,
+      greetingReady: openingGreetingReady,
+      greetingPlayed: openingGreetingPlayedRef.current,
+    })) {
       return
     }
 
@@ -181,8 +181,20 @@ export default function AvatarScene() {
         openingGreetingActionRef.current,
       )
     }
-    speakRef.current?.(WELCOME_PROMPT)
-  }, [loaderVisible, openingGreetingReady])
+    speak(WELCOME_PROMPT)
+    const fadeTimer = setTimeout(
+      () => setLoaderFading(true),
+      OPENING_GREETING_REVEAL_DELAY_MS,
+    )
+    const hideTimer = setTimeout(
+      () => setLoaderVisible(false),
+      OPENING_GREETING_REVEAL_DELAY_MS + OPENING_FADE_DURATION_MS,
+    )
+    return () => {
+      clearTimeout(fadeTimer)
+      clearTimeout(hideTimer)
+    }
+  }, [classroomReady, openingGreetingReady])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -293,8 +305,7 @@ export default function AvatarScene() {
 
     // Camera
     const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 20)
-    camera.position.set(-0.4, 1.4, -4.0)
-    camera.lookAt(0, 1.4, 0)
+    positionOpeningCamera(camera)
 
     if (CLASSROOM_INSPECTION_ENABLED) {
       classroomInspectionCamera = createClassroomInspectionCamera({ canvas, camera })
@@ -353,6 +364,7 @@ export default function AvatarScene() {
         }
         startOcclusionIfReady()
         startMovementIfReady()
+        setClassroomReady(true)
 
         if (CLASSROOM_INSPECTION_ENABLED) {
           classroomInspector = createClassroomInspector({
@@ -379,7 +391,10 @@ export default function AvatarScene() {
       },
       undefined,
       (err) => {
-        if (!disposed) console.error('Classroom load error:', err)
+        if (!disposed) {
+          console.error('Classroom load error:', err)
+          setClassroomReady(true)
+        }
       },
     )
 
@@ -417,6 +432,7 @@ export default function AvatarScene() {
         const vrm = gltf.userData.vrm
         disableUnwantedSpringBones(vrm)
         VRMUtils.removeUnnecessaryJoints(vrm.scene)
+        positionOpeningAvatar(vrm.scene)
         scene.add(vrm.scene)
         vrmRef.current = vrm
         applyRestPose(vrm)
@@ -493,7 +509,11 @@ export default function AvatarScene() {
                   setOpeningGreetingReady(true)
                 }
               })
-              .catch(error => console.error('Opening greeting load error:', error))
+              .catch((error) => {
+                if (disposed) return
+                console.error('Opening greeting load error:', error)
+                setOpeningGreetingReady(true)
+              })
 
             if (ANIMATION_PREVIEW_ENABLED) {
               previewActions.set('Idle_Loop', coreActions.idle)
@@ -547,9 +567,6 @@ export default function AvatarScene() {
         if (!disposed) console.error('VRM load error:', err)
       },
     )
-
-    // Wave trigger
-    triggerRef.current = () => triggerWave(waveRef)
 
     // Blink state
     const blinkState = createBlinkState()
@@ -639,7 +656,6 @@ export default function AvatarScene() {
             ].includes(animationController?.getState()),
           },
         )
-        updateWave(vrm, waveRef, delta)
         vrm.update(delta)
       }
 
@@ -1142,13 +1158,6 @@ export default function AvatarScene() {
       <section className="control-dock" aria-label="Talk to Esme">
 
         <button
-          className="button button--secondary"
-          onClick={() => triggerRef.current?.()}
-        >
-          Wave Hi
-        </button>
-
-        <button
           className={`button button--secondary ${voiceEnabled ? 'button--active' : ''}`}
           onClick={() => setVoiceEnabled(v => !v)}
           title={voiceEnabled ? 'Disable voice' : 'Enable voice'}
@@ -1162,7 +1171,7 @@ export default function AvatarScene() {
           disabled={!elevenLabsAvailable}
           title={!elevenLabsAvailable ? 'Add ELEVENLABS_API_KEY to backend/.env to enable' : useElevenLabs ? 'Switch to browser voice' : 'Switch to ElevenLabs voice'}
         >
-          {useElevenLabs && elevenLabsAvailable ? 'ElevenLabs' : 'Browser'}
+          {useElevenLabs && elevenLabsAvailable ? 'ElevenLabs voice' : 'Browser voice'}
         </button>
 
         <button
@@ -1193,15 +1202,21 @@ export default function AvatarScene() {
           disabled={loading || chatLimitReached}
         />
 
-        {chatLimitReached ? (
-          <button className="button button--primary" onClick={startNewChat}>
-            Start new chat
-          </button>
-        ) : (
-          <button className="button button--primary" onClick={handleSend} disabled={loading}>
-            {loading ? '...' : 'Send'}
-          </button>
-        )}
+        <div className="control-dock__actions">
+          {chatLimitReached ? (
+            <button className="button button--primary" onClick={startNewChat}>
+              Start new chat
+            </button>
+          ) : (
+            <button className="button button--primary" onClick={handleSend} disabled={loading}>
+              {loading ? '...' : 'Send'}
+            </button>
+          )}
+
+          <p className="control-dock__help">
+            WASD or arrow keys to move · Hold Shift to run · Drag to rotate · Scroll to zoom
+          </p>
+        </div>
       </section>
     </main>
   )
