@@ -1211,6 +1211,10 @@ export default function AvatarScene() {
             {loading ? '...' : 'Send'}
           </button>
         )}
+
+        <p className="control-dock__help">
+          WASD or arrow keys to move · Hold Shift to run · Drag to rotate · Scroll to zoom
+        </p>
       </section>
     </main>
   )

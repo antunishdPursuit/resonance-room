@@ -449,6 +449,16 @@ summary:focus-visible {
   transform: translateX(-50%);
 }
 
+.control-dock__help {
+  order: 4;
+  flex: 1 0 100%;
+  margin: -2px 0 0;
+  color: var(--esme-muted);
+  font-size: 0.7rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
 .animation-preview {
   bottom: 96px;
   left: 16px;
@@ -788,6 +798,11 @@ summary:focus-visible {
 
   .composer-input {
     flex-basis: calc(100% - 110px);
+  }
+
+  .control-dock__help {
+    padding-inline: 4px;
+    font-size: 0.65rem;
   }
 }
 
