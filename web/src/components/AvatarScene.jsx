@@ -33,6 +33,10 @@ import {
   createClassroomRecommendationBoard,
 } from '../classroom/classroomRecommendationBoard.js'
 import {
+  positionOpeningAvatar,
+  positionOpeningCamera,
+} from '../classroom/classroomOpeningSequence.js'
+import {
   createClassroomRecommendationBoardInteraction,
   getBoardInteractionMinimumZ,
   isBoardInteractionEnabled,
@@ -291,8 +295,7 @@ export default function AvatarScene() {
 
     // Camera
     const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 20)
-    camera.position.set(-0.4, 1.4, -4.0)
-    camera.lookAt(0, 1.4, 0)
+    positionOpeningCamera(camera)
 
     if (CLASSROOM_INSPECTION_ENABLED) {
       classroomInspectionCamera = createClassroomInspectionCamera({ canvas, camera })
@@ -415,6 +418,7 @@ export default function AvatarScene() {
         const vrm = gltf.userData.vrm
         disableUnwantedSpringBones(vrm)
         VRMUtils.removeUnnecessaryJoints(vrm.scene)
+        positionOpeningAvatar(vrm.scene)
         scene.add(vrm.scene)
         vrmRef.current = vrm
         applyRestPose(vrm)
