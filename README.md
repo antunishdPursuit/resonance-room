@@ -167,7 +167,8 @@ See the [fallback model card](docs/fallback-model-card.md) for evaluation eviden
 
 - Avatar locomotion uses the [Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) by Quaternius. `UAL1_Standard.glb` is distributed under CC0 1.0, and the repository includes the license text.
 - The classroom source is recorded in this [Fab listing](https://www.fab.com/listings/a92bc730-55a9-46e5-ae25-4dcd9e6a08f8).
-- `Esme.vrm`, `Velvetta.vrm`, and the bundled VRMA files require a final provenance and redistribution review before a production release.
+- `Esme.vrm` is the VRoid Project's [AvatarSample_B](https://hub.vroid.com/en/characters/7939147878897061040/models/2292219474373673889). Its VRoid Hub conditions allow avatar use, commercial use, redistribution, and alterations without attribution. The model is not CC0.
+- The bundled VRMA files still require a final provenance and redistribution review before a production release.
 
 ## Status
 
