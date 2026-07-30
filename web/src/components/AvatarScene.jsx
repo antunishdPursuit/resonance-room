@@ -780,79 +780,29 @@ export default function AvatarScene() {
 
       {/* Loading screen */}
       {loaderVisible && (
-        <div className="loading-screen" style={{
-          position:   'fixed',
-          inset:      0,
-          zIndex:     100,
-          display:    'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'linear-gradient(135deg, #0f0a1e 0%, #1e0a3c 50%, #0a0a1e 100%)',
-          transition: 'opacity 0.6s ease',
-          opacity:    loaderFading ? 0 : 1,
-          pointerEvents: loaderFading ? 'none' : 'auto',
-        }}>
-          {/* Pulsing ring */}
-          <div className="loading-screen__ring" style={{
-            width:        90,
-            height:       90,
-            borderRadius: '50%',
-            border:       '3px solid rgba(124,58,237,0.2)',
-            borderTop:    '3px solid #a855f7',
-            animation:    'spin 1.2s linear infinite',
-            marginBottom: 32,
-          }} />
+        <div className="loading-screen" data-fading={loaderFading}>
+          <div className="loading-screen__ring" />
 
-          <div className="loading-screen__copy" style={{ fontFamily: 'sans-serif', textAlign: 'center' }}>
-            <div className="loading-screen__title" style={{ fontSize: 32, fontWeight: 700, color: '#fff', letterSpacing: 2 }}>
+          <div className="loading-screen__copy">
+            <div className="loading-screen__title">
               Esme
             </div>
-            <div className="loading-screen__status" style={{ fontSize: 14, color: 'rgba(168,85,247,0.9)', marginTop: 8, letterSpacing: 1 }}>
-              ♪ loading your music experience...
+            <div className="loading-screen__status">
+              loading your music experience...
             </div>
           </div>
-
-          <style>{`
-            @keyframes spin {
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
         </div>
       )}
 
       {/* Picked songs panel */}
-      <section className="liked-panel" aria-label="Liked songs" style={{
-        position:       'absolute',
-        top:            16,
-        left:           16,
-        width:          220,
-        maxHeight:      '70vh',
-        overflowY:      'auto',
-        display:        'flex',
-        flexDirection:  'column',
-        gap:            6,
-        fontFamily:     'sans-serif',
-      }}>
-        <div className="panel-heading" style={{
-          color:      '#fff',
-          fontSize:   13,
-          fontWeight: 600,
-          padding:    '6px 10px',
-          background: 'rgba(0,0,0,0.35)',
-          backdropFilter: 'blur(8px)',
-          borderRadius: 8,
-        }}>
-          ♥ Liked Songs ({pickedSongs.length})
+      <section className="liked-panel" aria-label="Liked songs">
+        <div className="panel-heading">
+          Liked Songs ({pickedSongs.length})
         </div>
 
         {pickedSongs.length === 0 && (
-          <div className="panel-empty" style={{
-            color:      'rgba(255,255,255,0.4)',
-            fontSize:   12,
-            padding:    '6px 10px',
-          }}>
-            Pick songs you like with ❤️
+          <div className="panel-empty">
+            Pick songs you like from the board or transcript.
           </div>
         )}
 
@@ -860,46 +810,21 @@ export default function AvatarScene() {
           const safeUrl = safeLastFmUrl(s.url)
           const SongDetails = safeUrl ? 'a' : 'div'
           return (
-          <div className="liked-song" key={`${s.title}-${s.artist}`} style={{
-            display:        'flex',
-            alignItems:     'center',
-            gap:            6,
-            background:     'rgba(255,255,255,0.1)',
-            backdropFilter: 'blur(8px)',
-            border:         '1px solid rgba(255,255,255,0.15)',
-            borderRadius:   8,
-            padding:        '6px 10px',
-          }}>
+          <div className="liked-song" key={`${s.title}-${s.artist}`}>
             <SongDetails
               {...(safeUrl ? { href: safeUrl, target: '_blank', rel: 'noreferrer' } : {})}
               className="song-copy"
-              style={{ flex: 1, overflow: 'hidden', textDecoration: 'none' }}
             >
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {s.title}
-              </div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {s.artist}
-              </div>
+              <strong>{s.title}</strong>
+              <span>{s.artist}</span>
             </SongDetails>
             <button
               className="icon-button"
               onClick={() => removePick(s)}
               title={`Remove ${s.title} by ${s.artist}`}
               aria-label={`Remove ${s.title} by ${s.artist} from liked songs`}
-              style={{
-                background: 'none',
-                border:     'none',
-                cursor:     'pointer',
-                fontSize:   16,
-                color:      '#f87171',
-                padding:    '2px 4px',
-                lineHeight: 1,
-                flexShrink: 0,
-                textShadow: '0 0 4px rgba(0,0,0,0.8)',
-              }}
             >
-              ♥
+              {'\u2665'}
             </button>
           </div>
           )
@@ -926,91 +851,53 @@ export default function AvatarScene() {
       </div>
 
       {/* Chat history */}
-      <section className="transcript" aria-label="Conversation transcript" style={{
-        position: 'absolute',
-        top: 16,
-        right: 16,
-        width: 300,
-        maxHeight: '60vh',
-        overflowY: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        fontFamily: 'sans-serif',
-        display: transcriptOpen ? 'flex' : 'none',
-      }}>
+      <section
+        className="transcript"
+        aria-label="Conversation transcript"
+        data-open={transcriptOpen}
+      >
         <div className="transcript-heading">
           <strong>Conversation</strong>
           <button className="text-button" onClick={() => setTranscriptOpen(false)}>Close</button>
         </div>
-        <div
-          aria-label={"Esme\u2019s opening question"}
-          style={{ alignSelf: 'flex-start', maxWidth: '90%' }}
-        >
-          <div style={{
-            background:     'rgba(255,255,255,0.15)',
-            backdropFilter: 'blur(8px)',
-            color:          '#fff',
-            padding:        '8px 12px',
-            borderRadius:   10,
-            fontSize:       13,
-          }}>
+        <div className="transcript-entry transcript-entry--assistant" aria-label={"Esme\u2019s opening question"}>
+          <div className="transcript-bubble transcript-bubble--assistant">
             {WELCOME_PROMPT}
           </div>
         </div>
 
         {messages.map((m, i) => (
-          <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '90%' }}>
-            <div style={{
-              background:     m.role === 'user' ? '#7c3aed' : 'rgba(255,255,255,0.15)',
-              backdropFilter: 'blur(8px)',
-              color:          '#fff',
-              padding:        '8px 12px',
-              borderRadius:   10,
-              fontSize:       13,
-            }}>
+          <div
+            key={i}
+            className={`transcript-entry ${
+              m.role === 'user' ? 'transcript-entry--user' : 'transcript-entry--assistant'
+            }`}
+          >
+            <div
+              className={`transcript-bubble ${
+                m.role === 'user' ? 'transcript-bubble--user' : 'transcript-bubble--assistant'
+              }`}
+            >
               {m.content}
             </div>
 
             {m.songs && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+              <div className="transcript-songs">
                 {m.songs.map((s, j) => (
-                  <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <div
-                      style={{
-                        flex:           1,
-                        display:        'flex',
-                        flexDirection:  'column',
-                        background:     'rgba(124,58,237,0.3)',
-                        backdropFilter: 'blur(8px)',
-                        border:         '1px solid rgba(124,58,237,0.5)',
-                        borderRadius:   8,
-                        padding:        '6px 10px',
-                        color:          '#fff',
-                      }}
-                    >
-                      <span style={{ fontSize: 12, fontWeight: 600 }}>{s.title}</span>
-                      <span style={{ fontSize: 11, opacity: 0.7 }}>{s.artist}</span>
+                  <div key={j} className="transcript-song">
+                    <div className="transcript-song__copy">
+                      <strong>{s.title}</strong>
+                      <span>{s.artist}</span>
                     </div>
                     <button
+                      className="transcript-song__toggle"
                       onClick={() => togglePick(s)}
                       title={isPicked(s) ? `Unlike ${s.title} by ${s.artist}` : `Like ${s.title} by ${s.artist}`}
                       aria-label={isPicked(s) ? `Unlike ${s.title} by ${s.artist}` : `Like ${s.title} by ${s.artist}`}
                       aria-pressed={isPicked(s)}
-                      style={{
-                        background: 'none',
-                        border:     'none',
-                        cursor:     'pointer',
-                        fontSize:   18,
-                        padding:    '4px',
-                        lineHeight: 1,
-                        color:      isPicked(s) ? '#f472b6' : '#f9a8d4',
-                        opacity:    1,
-                        textShadow: '0 0 4px rgba(0,0,0,0.8)',
-                        flexShrink: 0,
-                      }}
+                      data-selected={isPicked(s)}
                     >
-                      {isPicked(s) ? '❤️' : '🖤'}
+                      {isPicked(s) ? '\u2665' : '\u2661'}
                     </button>
                   </div>
                 ))}
@@ -1019,7 +906,7 @@ export default function AvatarScene() {
           </div>
         ))}
         {loading && (
-          <div style={{ alignSelf: 'flex-start', color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
+          <div className="transcript-status">
             Esme is thinking...
           </div>
         )}
@@ -1215,74 +1102,44 @@ export default function AvatarScene() {
       {/* Controls */}
       {chatLimitReached && (
         <div
+          className="chat-limit-notice"
           role="status"
           aria-live="polite"
-          style={{
-            position:       'absolute',
-            bottom:         88,
-            left:           '50%',
-            transform:      'translateX(-50%)',
-            padding:        '8px 12px',
-            borderRadius:   8,
-            background:     'rgba(15,23,42,0.88)',
-            color:          '#fff',
-            fontFamily:     'sans-serif',
-            fontSize:       13,
-            backdropFilter: 'blur(8px)',
-            whiteSpace:     'nowrap',
-          }}
         >
-          You’ve reached the 20-message limit for this chat. Start a new chat to continue.
+          You've reached the 20-message limit for this chat. Start a new chat to continue.
         </div>
       )}
 
-      <section className="control-dock" aria-label="Talk to Esme" style={{
-        position: 'absolute',
-        bottom: 32,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        display: 'flex',
-        gap: 10,
-        alignItems: 'center',
-        fontFamily: 'sans-serif',
-      }}>
+      <section className="control-dock" aria-label="Talk to Esme">
 
         <button
           className="button button--secondary"
           onClick={() => triggerRef.current?.()}
-          style={btnStyle('#475569')}
         >
-          Wave Hi 👋
+          Wave Hi
         </button>
 
         <button
-          className="button button--secondary"
+          className={`button button--secondary ${voiceEnabled ? 'button--active' : ''}`}
           onClick={() => setVoiceEnabled(v => !v)}
           title={voiceEnabled ? 'Disable voice' : 'Enable voice'}
-          style={btnStyle(voiceEnabled ? '#475569' : '#1e1e2e')}
         >
-          {voiceEnabled ? '🔊 Voice On' : '🔇 Voice Off'}
+          {voiceEnabled ? 'Voice On' : 'Voice Off'}
         </button>
 
         <button
-          className="button button--secondary"
+          className={`button button--secondary ${useElevenLabs && elevenLabsAvailable ? 'button--accent' : ''}`}
           onClick={() => elevenLabsAvailable && setUseElevenLabs(v => !v)}
           disabled={!elevenLabsAvailable}
           title={!elevenLabsAvailable ? 'Add ELEVENLABS_API_KEY to backend/.env to enable' : useElevenLabs ? 'Switch to browser voice' : 'Switch to ElevenLabs voice'}
-          style={{
-            ...btnStyle(useElevenLabs && elevenLabsAvailable ? '#6d28d9' : '#374151'),
-            opacity: elevenLabsAvailable ? 1 : 0.4,
-            cursor:  elevenLabsAvailable ? 'pointer' : 'not-allowed',
-          }}
         >
-          {useElevenLabs && elevenLabsAvailable ? '✨ ElevenLabs' : '💬 Browser'}
+          {useElevenLabs && elevenLabsAvailable ? 'ElevenLabs' : 'Browser'}
         </button>
 
         <button
           className="button button--secondary"
           aria-expanded={transcriptOpen}
           onClick={() => setTranscriptOpen(value => !value)}
-          style={btnStyle('#475569')}
         >
           {transcriptOpen ? 'Hide transcript' : 'Show transcript'}
         </button>
@@ -1295,11 +1152,6 @@ export default function AvatarScene() {
             resetCameraRef.current?.()
             event.currentTarget.blur()
           }}
-          style={{
-            ...btnStyle('#475569'),
-            opacity: movementReady ? 1 : 0.45,
-            cursor: movementReady ? 'pointer' : 'not-allowed',
-          }}
         >
           Reset camera
         </button>
@@ -1310,26 +1162,14 @@ export default function AvatarScene() {
           onKeyDown={handleKeyDown}
           placeholder={chatLimitReached ? 'Start a new chat to continue' : loading ? 'Esme is thinking...' : 'Say something to Esme...'}
           disabled={loading || chatLimitReached}
-          style={{
-            padding:       '12px 16px',
-            borderRadius:  8,
-            border:        'none',
-            fontSize:      15,
-            width:         300,
-            outline:       'none',
-            background:    'rgba(255,255,255,0.15)',
-            color:         '#fff',
-            backdropFilter:'blur(8px)',
-            opacity:       loading || chatLimitReached ? 0.6 : 1,
-          }}
         />
 
         {chatLimitReached ? (
-          <button className="button button--primary" onClick={startNewChat} style={btnStyle('#7c3aed')}>
+          <button className="button button--primary" onClick={startNewChat}>
             Start new chat
           </button>
         ) : (
-          <button className="button button--primary" onClick={handleSend} disabled={loading} style={btnStyle('#7c3aed')}>
+          <button className="button button--primary" onClick={handleSend} disabled={loading}>
             {loading ? '...' : 'Send'}
           </button>
         )}
@@ -1338,18 +1178,6 @@ export default function AvatarScene() {
   )
 }
 
-function btnStyle(bg) {
-  return {
-    padding: '12px 20px',
-    background: bg,
-    color: '#fff',
-    border: 'none',
-    borderRadius: 8,
-    fontSize: 15,
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-  }
-}
 
 function safeLastFmUrl(value) {
   if (!value) return null
@@ -1362,3 +1190,4 @@ function safeLastFmUrl(value) {
     return null
   }
 }
+

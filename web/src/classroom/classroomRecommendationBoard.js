@@ -8,6 +8,18 @@ const COLUMN_X = [72, 1056]
 const ROW_Y = [140, 304, 468]
 const CARD_WIDTH = 920
 const CARD_HEIGHT = 132
+const BOARD_HEADING_FONT = '"Space Grotesk", ui-sans-serif, system-ui, sans-serif'
+const BOARD_BODY_FONT = 'Inter, ui-sans-serif, system-ui, sans-serif'
+const BOARD_FONT_REQUESTS = Object.freeze([
+  `700 48px ${BOARD_HEADING_FONT}`,
+  `600 24px ${BOARD_BODY_FONT}`,
+  `700 38px ${BOARD_BODY_FONT}`,
+  `400 28px ${BOARD_BODY_FONT}`,
+  `700 42px ${BOARD_BODY_FONT}`,
+])
+
+let boardFontFaceSet = null
+let boardFontLoadPromise = null
 
 export const RECOMMENDATION_BOARD_PLACEMENT = Object.freeze({
   position: Object.freeze([0.159, 1.648, 4.58]),
@@ -58,6 +70,24 @@ export function getRecommendationBoardPrompt(interactionEnabled) {
   return interactionEnabled ? '' : 'MOVE CLOSER TO INTERACT'
 }
 
+export function resetRecommendationBoardFontLoadCache() {
+  boardFontFaceSet = null
+  boardFontLoadPromise = null
+}
+
+export function loadRecommendationBoardFonts(fontFaceSet = globalThis.document?.fonts) {
+  if (!fontFaceSet?.load) return Promise.resolve(false)
+
+  if (fontFaceSet !== boardFontFaceSet) {
+    boardFontFaceSet = fontFaceSet
+    boardFontLoadPromise = Promise.all(
+      BOARD_FONT_REQUESTS.map(font => fontFaceSet.load(font)),
+    ).then(() => true, () => false)
+  }
+
+  return boardFontLoadPromise
+}
+
 function drawBoard(
   context,
   rows,
@@ -73,7 +103,7 @@ function drawBoard(
   context.shadowBlur = 8
 
   context.fillStyle = '#f9a8d4'
-  context.font = '700 48px Arial, sans-serif'
+  context.font = `700 48px ${BOARD_HEADING_FONT}`
   context.textAlign = 'center'
   context.fillText("ESME'S PICKS", CANVAS_WIDTH / 2, 58)
 
@@ -81,7 +111,7 @@ function drawBoard(
   if (prompt) {
     context.shadowBlur = 4
     context.fillStyle = 'rgba(243, 215, 229, 0.78)'
-    context.font = '600 24px Arial, sans-serif'
+    context.font = `600 24px ${BOARD_BODY_FONT}`
     context.fillText(prompt, CANVAS_WIDTH / 2, 104)
   }
 
@@ -107,20 +137,20 @@ function drawBoard(
 
     context.shadowBlur = 6
     context.fillStyle = '#f9a8d4'
-    context.font = '700 38px Arial, sans-serif'
+    context.font = `700 38px ${BOARD_BODY_FONT}`
     context.textAlign = 'left'
     context.fillText(`${row.index}.`, x + 28, y + 42)
 
     context.fillStyle = '#fff7ed'
-    context.font = '700 38px Arial, sans-serif'
+    context.font = `700 38px ${BOARD_BODY_FONT}`
     context.fillText(row.title, x + 90, y + 42)
 
     context.fillStyle = '#f3d7e5'
-    context.font = '400 28px Arial, sans-serif'
+    context.font = `400 28px ${BOARD_BODY_FONT}`
     context.fillText(row.artist, x + 90, y + 92)
 
     context.fillStyle = selected ? '#f472b6' : '#f9a8d4'
-    context.font = '700 42px Arial, sans-serif'
+    context.font = `700 42px ${BOARD_BODY_FONT}`
     context.textAlign = 'center'
     context.fillText(selected ? '♥' : '♡', x + CARD_WIDTH - 48, y + 66)
   })
@@ -209,6 +239,8 @@ export function createClassroomRecommendationBoard() {
     )
     texture.needsUpdate = true
   }
+
+  loadRecommendationBoardFonts().finally(redraw)
 
   return {
     object3d,

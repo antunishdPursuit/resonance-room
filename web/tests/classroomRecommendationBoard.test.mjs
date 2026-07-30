@@ -5,6 +5,8 @@ import {
   formatRecommendationBoardRows,
   getRecommendationBoardPrompt,
   getRecommendationBoardRowPlacement,
+  loadRecommendationBoardFonts,
+  resetRecommendationBoardFontLoadCache,
 } from '../src/classroom/classroomRecommendationBoard.js'
 
 test('lays out up to six recommendations in two columns', () => {
@@ -72,4 +74,26 @@ test('shows the proximity prompt only when board interaction is unavailable', ()
     'MOVE CLOSER TO INTERACT',
   )
   assert.equal(getRecommendationBoardPrompt(true), '')
+})
+
+test('loads the approved board fonts once per font-face set', async () => {
+  resetRecommendationBoardFontLoadCache()
+
+  const requestedFonts = []
+  const fontFaceSet = {
+    load(font) {
+      requestedFonts.push(font)
+      return Promise.resolve([font])
+    },
+  }
+
+  assert.equal(await loadRecommendationBoardFonts(fontFaceSet), true)
+  assert.equal(await loadRecommendationBoardFonts(fontFaceSet), true)
+  assert.deepEqual(requestedFonts, [
+    '700 48px "Space Grotesk", ui-sans-serif, system-ui, sans-serif',
+    '600 24px Inter, ui-sans-serif, system-ui, sans-serif',
+    '700 38px Inter, ui-sans-serif, system-ui, sans-serif',
+    '400 28px Inter, ui-sans-serif, system-ui, sans-serif',
+    '700 42px Inter, ui-sans-serif, system-ui, sans-serif',
+  ])
 })
