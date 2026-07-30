@@ -1202,19 +1202,21 @@ export default function AvatarScene() {
           disabled={loading || chatLimitReached}
         />
 
-        {chatLimitReached ? (
-          <button className="button button--primary" onClick={startNewChat}>
-            Start new chat
-          </button>
-        ) : (
-          <button className="button button--primary" onClick={handleSend} disabled={loading}>
-            {loading ? '...' : 'Send'}
-          </button>
-        )}
+        <div className="control-dock__actions">
+          {chatLimitReached ? (
+            <button className="button button--primary" onClick={startNewChat}>
+              Start new chat
+            </button>
+          ) : (
+            <button className="button button--primary" onClick={handleSend} disabled={loading}>
+              {loading ? '...' : 'Send'}
+            </button>
+          )}
 
-        <p className="control-dock__help">
-          WASD or arrow keys to move · Hold Shift to run · Drag to rotate · Scroll to zoom
-        </p>
+          <p className="control-dock__help">
+            WASD or arrow keys to move · Hold Shift to run · Drag to rotate · Scroll to zoom
+          </p>
+        </div>
       </section>
     </main>
   )

@@ -449,14 +449,24 @@ summary:focus-visible {
   transform: translateX(-50%);
 }
 
+.control-dock__actions {
+  order: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.control-dock__actions .button--primary {
+  order: 0;
+}
+
 .control-dock__help {
-  order: 4;
-  flex: 1 0 100%;
-  margin: -2px 0 0;
+  max-width: 300px;
+  margin: 0;
   color: var(--esme-muted);
   font-size: 0.7rem;
   line-height: 1.4;
-  text-align: center;
+  text-align: left;
 }
 
 .animation-preview {
@@ -801,7 +811,7 @@ summary:focus-visible {
   }
 
   .control-dock__help {
-    padding-inline: 4px;
+    max-width: 210px;
     font-size: 0.65rem;
   }
 }
