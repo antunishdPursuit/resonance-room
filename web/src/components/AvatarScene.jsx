@@ -11,7 +11,7 @@ import { createBlinkState, updateBlink } from '../animations/idle.js'
 import { createHumanoidAnimationClip } from '../animations/createHumanoidAnimation.js'
 import { createAvatarAnimationController } from '../animations/avatarAnimationController.js'
 import { disableUnwantedSpringBones } from '../animations/avatarPhysics.js'
-import { createWaveState, triggerWave, applyRestPose, updateWave } from '../animations/wave.js'
+import { applyRestPose } from '../animations/avatarRestPose.js'
 import { createLipSyncState, startSpeaking, stopSpeaking, updateLipSync } from '../animations/lipsync.js'
 import {
   createSpeakingFaceState,
@@ -76,8 +76,6 @@ export default function AvatarScene() {
   const canvasRef  = useRef(null)
   const vrmRef     = useRef(null)
   const mixerRef   = useRef(null)
-  const waveRef         = useRef(createWaveState())
-  const triggerRef      = useRef(null)
   const speakRef        = useRef(null)
   const inputRef        = useRef(null)
   const speechBubbleRef = useRef(null)
@@ -548,9 +546,6 @@ export default function AvatarScene() {
       },
     )
 
-    // Wave trigger
-    triggerRef.current = () => triggerWave(waveRef)
-
     // Blink state
     const blinkState = createBlinkState()
 
@@ -639,7 +634,6 @@ export default function AvatarScene() {
             ].includes(animationController?.getState()),
           },
         )
-        updateWave(vrm, waveRef, delta)
         vrm.update(delta)
       }
 
@@ -1140,13 +1134,6 @@ export default function AvatarScene() {
       )}
 
       <section className="control-dock" aria-label="Talk to Esme">
-
-        <button
-          className="button button--secondary"
-          onClick={() => triggerRef.current?.()}
-        >
-          Wave Hi
-        </button>
 
         <button
           className={`button button--secondary ${voiceEnabled ? 'button--active' : ''}`}
