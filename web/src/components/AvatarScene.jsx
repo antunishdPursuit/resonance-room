@@ -27,6 +27,9 @@ import {
 } from '../classroom/classroomMovementEnvironment.js'
 import { createAvatarMovementController } from '../classroom/avatarMovementController.js'
 import {
+  createClassroomOcclusionController,
+} from '../classroom/classroomOcclusionController.js'
+import {
   createClassroomRecommendationBoard,
 } from '../classroom/classroomRecommendationBoard.js'
 import {
@@ -188,6 +191,7 @@ export default function AvatarScene() {
     let classroomInspectionCamera = null
     let movementEnvironment = null
     let movementController = null
+    let occlusionController = null
     let collisionDebugView = null
     let animationController = null
     let recommendationBoard = null
@@ -256,6 +260,26 @@ export default function AvatarScene() {
         window.__ESME_MOVEMENT__ = movementController
       }
       setMovementReady(true)
+    }
+
+    function startOcclusionIfReady() {
+      if (
+        CLASSROOM_INSPECTION_ENABLED
+        || occlusionController
+        || !movementEnvironment
+        || !vrmRef.current
+      ) {
+        return
+      }
+
+      occlusionController = createClassroomOcclusionController({
+        camera,
+        avatarRoot: vrmRef.current.scene,
+        classroomMeshes: movementEnvironment.classroomMeshes,
+        reducedMotion: window.matchMedia(
+          '(prefers-reduced-motion: reduce)',
+        ).matches,
+      })
     }
 
     // Renderer
@@ -327,6 +351,7 @@ export default function AvatarScene() {
             movementEnvironment,
           )
         }
+        startOcclusionIfReady()
         startMovementIfReady()
 
         if (CLASSROOM_INSPECTION_ENABLED) {
@@ -395,6 +420,7 @@ export default function AvatarScene() {
         scene.add(vrm.scene)
         vrmRef.current = vrm
         applyRestPose(vrm)
+        startOcclusionIfReady()
         startMovementIfReady()
 
         // The animation library creates this proxy implicitly and warns. Creating
@@ -619,6 +645,7 @@ export default function AvatarScene() {
 
       classroomInspectionCamera?.update(delta)
       updateSpeechBubblePosition()
+      occlusionController?.update(delta)
       renderer.render(scene, camera)
     }
 
@@ -643,6 +670,8 @@ export default function AvatarScene() {
       classroomInspectionCamera?.dispose()
       movementController?.dispose()
       movementController = null
+      occlusionController?.dispose()
+      occlusionController = null
       resetCameraRef.current = null
       animationPreviewRef.current = null
       animationController?.dispose()
