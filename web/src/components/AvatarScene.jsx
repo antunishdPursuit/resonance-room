@@ -96,10 +96,10 @@ export default function AvatarScene() {
   const [loaderVisible, setLoaderVisible] = useState(true)
   const [loaderFading,  setLoaderFading]  = useState(false)
   const [profileBuilt,       setProfileBuilt]       = useState(false)
-  const [voiceEnabled,       setVoiceEnabled]       = useState(true)
+  const [voiceEnabled,       setVoiceEnabled]       = useState(false)
   const [useElevenLabs,      setUseElevenLabs]      = useState(false)
   const [elevenLabsAvailable, setElevenLabsAvailable] = useState(false)
-  const [transcriptOpen,     setTranscriptOpen]     = useState(false)
+  const [transcriptOpen,     setTranscriptOpen]     = useState(true)
   const [inspectedClassroomMesh, setInspectedClassroomMesh] = useState(null)
   const [classroomInventory, setClassroomInventory] = useState([])
   const [classroomCollisionZones, setClassroomCollisionZones] = useState([])
@@ -114,7 +114,7 @@ export default function AvatarScene() {
   const messagesRef      = useRef([])
   const recommendationsRef = useRef([])
   const pickedSongsRef = useRef([])
-  const voiceEnabledRef  = useRef(true)
+  const voiceEnabledRef  = useRef(false)
   const useElevenlabsRef = useRef(true)
 
   useEffect(() => { messagesRef.current      = messages      }, [messages])
@@ -1149,7 +1149,7 @@ export default function AvatarScene() {
           disabled={!elevenLabsAvailable}
           title={!elevenLabsAvailable ? 'Add ELEVENLABS_API_KEY to backend/.env to enable' : useElevenLabs ? 'Switch to browser voice' : 'Switch to ElevenLabs voice'}
         >
-          {useElevenLabs && elevenLabsAvailable ? 'ElevenLabs' : 'Browser'}
+          {useElevenLabs && elevenLabsAvailable ? 'ElevenLabs voice' : 'Browser voice'}
         </button>
 
         <button
