@@ -125,6 +125,23 @@ def test_local_frontend_origins_cover_supported_dev_urls():
     }
 
 
+def test_frontend_origins_add_configured_production_urls():
+    assert api.frontend_origins(
+        "https://resonance-room-web.onrender.com/, https://music.example.com",
+    ) == [
+        *api.LOCAL_FRONTEND_ORIGINS,
+        "https://resonance-room-web.onrender.com",
+        "https://music.example.com",
+    ]
+
+
+def test_health_endpoint_is_available_without_provider_credentials():
+    response = request("GET", "/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
 def test_track_links_allow_only_lastfm_https_urls():
     tracks = [
         {"name": "Safe", "artist": {"name": "Artist"}, "url": "https://www.last.fm/music/safe"},

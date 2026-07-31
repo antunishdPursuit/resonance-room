@@ -68,9 +68,24 @@ LOCAL_FRONTEND_ORIGINS = [
     "http://127.0.0.1:5174",
 ]
 
+
+def frontend_origins(configured_origins: str | None = None) -> list[str]:
+    origins = list(LOCAL_FRONTEND_ORIGINS)
+    raw_origins = (
+        os.getenv("FRONTEND_ORIGINS", "")
+        if configured_origins is None
+        else configured_origins
+    )
+    for raw_origin in raw_origins.split(","):
+        origin = raw_origin.strip().rstrip("/")
+        if origin and origin not in origins:
+            origins.append(origin)
+    return origins
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=LOCAL_FRONTEND_ORIGINS,
+    allow_origins=frontend_origins(),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -185,6 +200,11 @@ class Message(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: Annotated[list[Message], Field(min_length=1, max_length=20)]
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 
 @app.post("/chat")
