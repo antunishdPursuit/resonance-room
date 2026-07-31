@@ -48,13 +48,15 @@ Every song in the catalog is scored against the user profile using a point syste
 1. Every song in the catalog gets a score
 2. Songs are sorted from highest to lowest score
 3. A diversity check runs: if two top songs are by the same artist, the lower-ranked one is skipped so the list feels more varied
-4. The top 5 songs after that check become the recommendations
+4. The requested number of songs after that check become the recommendations.
+   Resonance Room requests six for the classroom board; the standalone
+   evaluation uses five unless another value is supplied.
 
 ---
 
 ## Known biases and limitations
 
-- **Genre lock-in.** Because genre is worth +2.0 — more than any single numeric feature — a song in the wrong genre will almost never reach the top 5, even if it is a near-perfect match on every audio feature. A deeply acoustic, slow, melancholic *pop* song will lose to a mediocre *lofi* track for a "lofi" user.
+- **Genre lock-in.** Because genre is worth +2.0 — more than any single numeric feature — a song in the wrong genre will rarely reach the returned list, even if it is a near-perfect match on every audio feature. A deeply acoustic, slow, melancholic *pop* song will lose to a mediocre *lofi* track for a "lofi" user.
 
 - **Exact-match only for categories.** Genre and mood are all-or-nothing. A user who likes "lofi" gets zero credit for an "ambient" song, even though the two genres sound nearly identical. There is no partial credit for close categories.
 
@@ -95,10 +97,10 @@ flowchart TD
 
     N["Sort all songs highest to lowest score"] --> O
 
-    O{Enough distinct\nartists for k=5?}
+    O{Enough distinct\nartists for requested k?}
     O -->|yes| P["Diversity filter\none song per artist"]
-    O -->|no| Q["Take top 5 as-is"]
+    O -->|no| Q["Take top k as-is"]
 
-    P --> R([Top 5 Recommendations\nwith score and explanation])
+    P --> R([Top k Recommendations\nwith score and explanation])
     Q --> R
 ```

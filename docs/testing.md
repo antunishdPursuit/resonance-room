@@ -20,7 +20,8 @@ The Python suite covers:
 - safe provider error responses;
 - asynchronous Anthropic client handling;
 - Last.fm application identification and link allowlisting;
-- supported local frontend origins.
+- local and configured production frontend origins;
+- the provider-independent deployment health endpoint.
 
 ### Frontend
 
@@ -35,6 +36,11 @@ The frontend suite covers:
 - movement, running, speech, contextual actions, and idle-state priority;
 - recovery across repeated Three.js animation crossfades;
 - the rear classroom collision boundary;
+- classroom occlusion fading and restoration;
+- opening composition and greeting synchronization;
+- six-song board layout, proximity, raycasting, and drag rejection;
+- shared board, transcript, and liked-song selection state;
+- deferred and cancellable long-idle animation loading;
 - restrained speaking facial motion;
 - speech-bubble positioning, edge clamping, and visibility.
 
@@ -62,7 +68,9 @@ Run the Python audit from the repository root after installing `pip-audit` in th
 .\.venv\Scripts\python.exe -m pip_audit -r requirements.lock
 ```
 
-The GitHub Actions quality workflow repeats the Python tests, Python dependency audit, JavaScript audit, and frontend build for pull requests and pushes to `main`.
+The GitHub Actions quality workflow repeats the Python tests, Python dependency
+audit, frontend tests, JavaScript audit, and frontend build for pull requests
+and pushes to `main`.
 
 ## Manual browser checks
 
@@ -74,7 +82,13 @@ Automated checks do not prove that the 3D scene looks and feels correct. Before 
 4. Chat still returns the deterministic fallback when provider keys are unavailable.
 5. Speech, facial motion, and the world-anchored speech bubble remain synchronized.
 6. The transcript, keyboard controls, camera controls, and reduced-motion behavior remain usable.
-7. Browser developer tools show no unexpected runtime errors.
+7. Blackboard hover and click selection stay synchronized with transcript heart controls.
+8. Camera dragging does not select a song, and distant board interaction shows the proximity cue.
+9. Browser developer tools show no unexpected runtime errors.
+
+After deployment, repeat the fallback chat journey against the public frontend
+and `/health` endpoint. A local build does not verify production environment
+variables, CORS, free-service cold starts, or public asset delivery.
 
 ## Recommendation evaluation
 

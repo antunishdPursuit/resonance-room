@@ -11,11 +11,13 @@ flowchart TD
         LikedPanel[Liked Songs Panel<br/>pick ♡ / remove ♥]
         Avatar[VRM Avatar<br/>movement + animation + lip sync]
         Classroom[3D Classroom<br/>camera + collision map]
+        RecommendationBoard[Six-song blackboard<br/>raycast selection]
         TTS[TTS Engine<br/>ElevenLabs or Browser]
     end
 
     subgraph BACKEND ["Backend — FastAPI (port 8001)"]
         FallbackCheck{API keys<br/>set?}
+        HealthRoute["GET /health"]
         ChatRoute["POST /chat"]
         TTSRoute["POST /tts"]
     end
@@ -39,6 +41,7 @@ flowchart TD
     %% Normal chat flow
     User -->|types message| ChatUI
     User -->|WASD or arrow keys| Classroom
+    User -->|hover or click| RecommendationBoard
     Classroom --> Avatar
     ChatUI -->|POST /chat| ChatRoute
     ChatRoute --> FallbackCheck
@@ -52,10 +55,12 @@ flowchart TD
     %% Fallback path
     FallbackCheck -->|no| KeywordMatch
     KeywordMatch -->|matched profile| PythonRec
-    PythonRec -->|top 5 songs + canned reply| ChatRoute
+    PythonRec -->|top 6 songs + canned reply| ChatRoute
 
     %% Response back to user
     ChatRoute -->|response + song cards| ChatUI
+    ChatUI --> RecommendationBoard
+    RecommendationBoard --> LikedPanel
     ChatUI -->|trigger speech| TTS
     TTS -->|audio playback| Avatar
     Avatar -->|amplitude-driven jaw| Avatar
@@ -67,6 +72,7 @@ flowchart TD
     %% Voice
     User -->|POST /tts| TTSRoute
     TTSRoute -->|mp3 audio| TTS
+    RenderHealth([Render health check]) --> HealthRoute
 
     %% Testing loop
     Pytest -->|validates scoring logic| PythonRec
@@ -83,6 +89,7 @@ flowchart TD
 | --- | --- | --- |
 | **Conversation UI** | Accepts input and renders the current response, transcript, and song cards | Frontend |
 | **Liked Songs Panel** | Tracks up to 5 picked songs; triggers profile message | Frontend |
+| **Recommendation Board** | Displays six songs and shares selection state with the transcript | Frontend |
 | **VRM Avatar** | Moves through the classroom with collision-aware locomotion, animation, blinking, and lip sync | Frontend |
 | **Classroom Scene** | Renders the environment, orbit camera, inspection metadata, and collision zones | Frontend |
 | **TTS Engine** | Speaks Esme's replies — ElevenLabs (natural) or browser (fallback) | Frontend |
@@ -91,7 +98,7 @@ flowchart TD
 | **Claude Haiku** | Extracts genre/mood via tool use, forms the spoken reply | AI Agent |
 | **Last.fm API** | Retrieves real song recommendations by genre/mood tag | Retriever |
 | **Keyword Matcher** | Maps user message words to the closest taste profile | Fallback |
-| **Python Recommender** | Scores 18 songs against a profile, returns top 5 | Fallback / Evaluator |
+| **Python Recommender** | Scores 18 songs against a profile; the product returns six | Fallback / Evaluator |
 | **pytest suite** | Validates sorting, scoring, and explanation logic | Automated Testing |
 | **6 Test Profiles** | Covers realistic and adversarial user types | Evaluation |
 | **Human Review** | Checks whether ranked results match expected taste | Human-in-the-loop |

@@ -11,10 +11,12 @@ The project combines a React and Three.js frontend, a FastAPI orchestration laye
 - Transparent local recommendations when external providers are unavailable
 - A movable VRM avatar with walking, running, idle, greeting, facial, and lip-sync behavior
 - Collision-aware movement through a mapped 3D classroom
-- Orbit, zoom, follow, inspection, and reset camera controls
+- Orbit, zoom, follow, and reset camera controls
 - A response bubble anchored to the avatar with an accessible live-region mirror
 - A collapsible conversation transcript and a 20-message context limit
+- A selectable six-song classroom board synchronized with the transcript
 - Song cards, safe external links, and a five-song liked list
+- Camera occlusion fading when classroom furniture blocks Esme
 - ElevenLabs speech with browser-speech fallback
 - Automated backend, frontend, dependency, and build checks
 
@@ -108,7 +110,7 @@ From the repository root:
 From `web`:
 
 ```powershell
-npm install
+npm ci
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
@@ -134,6 +136,35 @@ The following query parameters are available only in the development build:
 - `?debugCollisions=1` shows movement collision zones.
 - `?testAnimations=1` shows the animation preview controls.
 
+## Deployment
+
+The repository includes a `render.yaml` Blueprint for:
+
+- a free Python web service named `resonance-room-api`;
+- a free static site named `resonance-room-web`;
+- a `/health` check for the FastAPI service;
+- automatic deployment only after GitHub checks pass.
+
+During the initial Render Blueprint setup, provide:
+
+```env
+FRONTEND_ORIGINS=https://resonance-room-web.onrender.com
+VITE_API_BASE_URL=https://resonance-room-api.onrender.com
+```
+
+Use the exact URLs Render assigns if either service name changes. After changing
+`VITE_API_BASE_URL`, redeploy the static site because Vite embeds that value at
+build time.
+
+The recommended first public deployment is fallback-only. Leave
+`ANTHROPIC_API_KEY`, `LASTFM_API_KEY`, and `ELEVENLABS_API_KEY` unset. The local
+recommender and browser speech remain available without paid provider
+credentials.
+
+Render free web services spin down after periods without traffic, so the first
+fallback request after inactivity can take longer while the API wakes up. The
+backend stores no user data and requires no persistent disk or database.
+
 ## Verification
 
 From the repository root:
@@ -152,6 +183,9 @@ npm audit
 ```
 
 Provider-dependent Anthropic, Last.fm, and ElevenLabs behavior requires valid local credentials and must be verified separately from the fallback path.
+
+If Last.fm is enabled for a public release, review its current API terms,
+attribution requirements, rate limits, and permitted use before adding the key.
 
 ## Recommendation Boundaries
 
@@ -172,4 +206,6 @@ See the [fallback model card](docs/fallback-model-card.md) for evaluation eviden
 
 ## Status
 
-Resonance Room is an active prototype. Movement, animation, fallback recommendations, the response bubble, and the primary conversation flow are implemented. Transcript layout, classroom song placement, loading presentation, provider credential testing, and avatar portability remain active or deferred work.
+Resonance Room is feature-complete for its current release scope and is in
+release hardening. The remaining production gates are final VRMA provenance
+review, deployment, and a smoke test of the public fallback experience.
