@@ -57,6 +57,7 @@ import {
   toggleSongSelection,
 } from '../ui/songSelection.js'
 import { calculateSpeechBubblePosition } from '../ui/speechBubblePosition.js'
+import { createFallbackChatReply } from '../recommendations/fallbackRecommender.js'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8001').replace(/\/$/, '')
 const MAX_CHAT_MESSAGES = 20
@@ -729,19 +730,11 @@ export default function AvatarScene() {
 
     const userMsg = { role: 'user', content: text }
     const history = [...messagesRef.current, userMsg]
-    const requestHistory = history.slice(-MAX_CHAT_MESSAGES)
     setMessages(history)
     setLoading(true)
 
     try {
-      const res  = await fetch(`${API_BASE_URL}/chat`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ messages: requestHistory }),
-      })
-      if (!res.ok) throw new Error(`Chat request failed with status ${res.status}`)
-      const data = await res.json()
-      if (!data.response) throw new Error('Chat response did not include a reply')
+      const data = createFallbackChatReply(text)
       const reply = data.response
 
       setMessages(prev => [...prev, {
@@ -751,10 +744,10 @@ export default function AvatarScene() {
       }])
       speak(reply)
     } catch (err) {
-      console.error('Chat error:', err)
+      console.error('Recommendation error:', err)
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: "I couldn't connect right now. Please try again.",
+        content: "I couldn't prepare recommendations right now. Please try again.",
       }])
     } finally {
       setLoading(false)
@@ -1199,7 +1192,7 @@ export default function AvatarScene() {
         </div>
 
         <p className="control-dock__fallback-note" role="note">
-          Fallback available: If external services are unavailable, recommendations use the built-in 18-song catalog and voice uses browser speech.
+          Static demo: Recommendations use the built-in 18-song catalog. Browser speech remains available if the voice service is unavailable.
         </p>
       </section>
     </main>
