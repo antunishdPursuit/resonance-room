@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Literal
 import anthropic
 import httpx
 from dotenv import load_dotenv
@@ -309,30 +309,3 @@ async def tts(req: TTSRequest):
         raise HTTPException(status_code=502, detail="Voice provider unavailable") from exc
 
     return Response(content=resp.content, media_type="audio/mpeg")
-
-
-class RecommendRequest(BaseModel):
-    genre: Annotated[str, Field(min_length=1, max_length=100)]
-    mood:  Optional[Annotated[str, Field(min_length=1, max_length=100)]] = None
-    limit: Annotated[int, Field(ge=1, le=10)] = 6
-
-
-@app.post("/recommend")
-async def recommend(req: RecommendRequest):
-    """Direct Last.fm lookup — no Claude involved. Used for testing the data layer."""
-    if not os.getenv("LASTFM_API_KEY"):
-        raise HTTPException(status_code=500, detail="LASTFM_API_KEY not set")
-
-    try:
-        tracks = await fetch_tracks(req.genre, req.limit)
-        if not tracks and req.mood:
-            tracks = await fetch_tracks(req.mood, req.limit)
-    except ProviderError as exc:
-        raise HTTPException(status_code=502, detail="Music data provider unavailable") from exc
-    if not tracks:
-        raise HTTPException(status_code=404, detail=f"No tracks found for '{req.genre}'")
-
-    return {
-        "tag": req.genre,
-        "recommendations": _format_tracks(tracks),
-    }
