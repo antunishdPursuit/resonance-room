@@ -12,6 +12,7 @@ import { createHumanoidAnimationClip } from '../animations/createHumanoidAnimati
 import { createAvatarAnimationController } from '../animations/avatarAnimationController.js'
 import { disableUnwantedSpringBones } from '../animations/avatarPhysics.js'
 import { applyRestPose } from '../animations/avatarRestPose.js'
+import { scheduleLongIdleAnimationLoad } from '../animations/longIdleAnimationLoading.js'
 import { createLipSyncState, startSpeaking, stopSpeaking, updateLipSync } from '../animations/lipsync.js'
 import {
   createSpeakingFaceState,
@@ -208,6 +209,7 @@ export default function AvatarScene() {
     let animationController = null
     let recommendationBoard = null
     let recommendationBoardInteraction = null
+    let cancelLongIdleAnimationLoad = null
     const previewActions = new Map()
     const previewLoads = new Map()
 
@@ -481,24 +483,29 @@ export default function AvatarScene() {
               return
             }
 
+            const idleVariationsEnabled = !window.matchMedia(
+              '(prefers-reduced-motion: reduce)',
+            ).matches
             animationController = createAvatarAnimationController({
               mixer,
               actions: coreActions,
-              idleVariationsEnabled: !window.matchMedia(
-                '(prefers-reduced-motion: reduce)',
-              ).matches,
+              idleVariationsEnabled,
             })
             animationControllerRef.current = animationController
-            Promise.all(LONG_IDLE_ANIMATION_IDS.map(loadVrmaPreview))
-              .then((actions) => {
-                if (
-                  !disposed
-                  && animationControllerRef.current === animationController
-                ) {
-                  animationController.setIdleVariations(actions)
-                }
+            if (idleVariationsEnabled) {
+              cancelLongIdleAnimationLoad = scheduleLongIdleAnimationLoad(() => {
+                Promise.all(LONG_IDLE_ANIMATION_IDS.map(loadVrmaPreview))
+                  .then((actions) => {
+                    if (
+                      !disposed
+                      && animationControllerRef.current === animationController
+                    ) {
+                      animationController.setIdleVariations(actions)
+                    }
+                  })
+                  .catch(error => console.error('Long-idle animation load error:', error))
               })
-              .catch(error => console.error('Long-idle animation load error:', error))
+            }
             loadVrmaPreview('VRMA_02')
               .then((action) => {
                 if (
@@ -690,6 +697,8 @@ export default function AvatarScene() {
       occlusionController = null
       resetCameraRef.current = null
       animationPreviewRef.current = null
+      cancelLongIdleAnimationLoad?.()
+      cancelLongIdleAnimationLoad = null
       animationController?.dispose()
       animationController = null
       animationControllerRef.current = null
