@@ -1226,6 +1226,10 @@ export default function AvatarScene() {
             WASD or arrow keys to move · Hold Shift to run · Drag to rotate · Scroll to zoom
           </p>
         </div>
+
+        <p className="control-dock__fallback-note" role="note">
+          Fallback available: If external services are unavailable, recommendations use the built-in 18-song catalog and voice uses browser speech.
+        </p>
       </section>
     </main>
   )
