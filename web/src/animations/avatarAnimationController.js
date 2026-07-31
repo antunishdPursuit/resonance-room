@@ -21,6 +21,8 @@ export function createAvatarAnimationController({
   let currentAction = null
   let temporaryAction = null
   let temporaryState = null
+  let temporaryQueue = []
+  let temporaryOnComplete = null
   let idleElapsed = 0
   let idleVariations = []
   let previousIdleVariation = null
@@ -34,47 +36,60 @@ export function createAvatarAnimationController({
     return CORE_STATE.IDLE
   }
 
-  function restoreAction(action, { loop = true } = {}) {
+  function restoreAction(action, { repetitions = Infinity } = {}) {
+    const loop = repetitions !== 1
     action.enabled = true
     action.paused = false
     action
       .reset()
       .setLoop(
         loop ? THREE.LoopRepeat : THREE.LoopOnce,
-        loop ? Infinity : 1,
+        repetitions,
       )
       .setEffectiveTimeScale(1)
       .setEffectiveWeight(1)
       .play()
   }
 
-  function transitionTo(action, { loop = true } = {}) {
+  function transitionTo(action, { repetitions = Infinity } = {}) {
     if (!action) return
 
     if (action === currentAction) {
       if (!action.enabled || action.paused || !action.isRunning()) {
-        restoreAction(action, { loop })
+        restoreAction(action, { repetitions })
       }
       return
     }
 
-    restoreAction(action, { loop })
+    restoreAction(action, { repetitions })
     if (currentAction) {
       currentAction.crossFadeTo(action, transitionDuration, true)
     }
     currentAction = action
   }
 
-  function returnToCoreState() {
+  function returnToCoreState({ completed = false } = {}) {
+    const onComplete = completed ? temporaryOnComplete : null
     temporaryAction = null
     temporaryState = null
+    temporaryQueue = []
+    temporaryOnComplete = null
     idleElapsed = 0
-    transitionTo(actions[desiredCoreState()], { loop: true })
+    transitionTo(actions[desiredCoreState()])
+    onComplete?.()
   }
 
   function handleFinished(event) {
     if (event.action !== temporaryAction) return
-    returnToCoreState()
+    const nextStep = temporaryQueue.shift()
+    if (nextStep) {
+      startTemporaryAction(nextStep.action, {
+        repetitions: nextStep.repetitions,
+        state: temporaryState,
+      })
+      return
+    }
+    returnToCoreState({ completed: true })
   }
 
   function interruptForMovement() {
@@ -106,17 +121,33 @@ export function createAvatarAnimationController({
     return candidates[Math.floor(random() * candidates.length)]
   }
 
-  function playTemporaryAction(action, { loop, state }) {
+  function startTemporaryAction(action, { repetitions, state }) {
     if (!action) return
 
-    action.clampWhenFinished = !loop
+    const restartCurrentAction = action === currentAction
+    action.clampWhenFinished = Number.isFinite(repetitions)
     temporaryAction = action
     temporaryState = state
-    transitionTo(action, { loop })
+    if (restartCurrentAction) {
+      restoreAction(action, { repetitions })
+    } else {
+      transitionTo(action, { repetitions })
+    }
+  }
+
+  function playTemporaryAction(action, {
+    repetitions,
+    state,
+    queue = [],
+    onComplete = null,
+  }) {
+    temporaryQueue = [...queue]
+    temporaryOnComplete = onComplete
+    startTemporaryAction(action, { repetitions, state })
   }
 
   mixer.addEventListener('finished', handleFinished)
-  transitionTo(actions[CORE_STATE.IDLE], { loop: true })
+  transitionTo(actions[CORE_STATE.IDLE])
 
   return {
     setMoving(value, { running: nextRunning = false } = {}) {
@@ -124,7 +155,7 @@ export function createAvatarAnimationController({
       running = moving && Boolean(nextRunning)
       if (moving) interruptForMovement()
       if (!temporaryAction) {
-        transitionTo(actions[desiredCoreState()], { loop: true })
+        transitionTo(actions[desiredCoreState()])
       }
     },
 
@@ -134,22 +165,56 @@ export function createAvatarAnimationController({
         interruptForSpeech()
       }
       if (!temporaryAction) {
-        transitionTo(actions[desiredCoreState()], { loop: true })
+        transitionTo(actions[desiredCoreState()])
       }
     },
 
-    playPreview(action, { loop = true } = {}) {
-      playTemporaryAction(action, { loop, state: 'preview' })
+    playPreview(action, { loop = true, onComplete = null } = {}) {
+      playTemporaryAction(action, {
+        repetitions: loop ? Infinity : 1,
+        state: 'preview',
+        onComplete,
+      })
     },
 
-    playContextual(action) {
-      playTemporaryAction(action, { loop: false, state: 'contextual' })
+    playPreviewSequence(steps, { onComplete = null } = {}) {
+      const availableSteps = steps.filter(step => step.action)
+      const [firstStep, ...remainingSteps] = availableSteps
+      if (!firstStep) return
+
+      playTemporaryAction(firstStep.action, {
+        repetitions: firstStep.repetitions,
+        state: 'preview',
+        queue: remainingSteps,
+        onComplete,
+      })
+    },
+
+    playContextual(action, { repetitions = 1 } = {}) {
+      playTemporaryAction(action, {
+        repetitions,
+        state: 'contextual',
+      })
     },
 
     returnToCoreState,
 
     setIdleVariations(value) {
-      idleVariations = value.filter(Boolean)
+      idleVariations = value
+        .filter(Boolean)
+        .map(variation => (
+          Array.isArray(variation?.steps)
+            ? variation
+            : {
+              id: variation,
+              steps: [{ action: variation, repetitions: 1 }],
+            }
+        ))
+        .filter(variation => (
+          Array.isArray(variation.steps)
+        && variation.steps.length > 0
+        && variation.steps.every(step => step.action)
+        ))
       previousIdleVariation = null
       idleElapsed = 0
     },
@@ -164,11 +229,13 @@ export function createAvatarAnimationController({
         if (idleElapsed >= idleVariationDelay) {
           const variation = chooseIdleVariation()
           if (variation) {
+            const [firstStep, ...remainingSteps] = variation.steps
             previousIdleVariation = variation
             idleElapsed = 0
-            playTemporaryAction(variation, {
-              loop: false,
+            playTemporaryAction(firstStep.action, {
+              repetitions: firstStep.repetitions,
               state: 'long-idle',
+              queue: remainingSteps,
             })
           }
         }

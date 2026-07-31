@@ -7,11 +7,13 @@ class FakeAction {
   constructor(name) {
     this.name = name
     this.transitions = []
+    this.resetCount = 0
     this.enabled = true
     this.paused = false
   }
 
   reset() {
+    this.resetCount += 1
     this.enabled = true
     this.paused = false
     return this
@@ -19,7 +21,11 @@ class FakeAction {
   setEffectiveWeight() { return this }
   setEffectiveTimeScale() { return this }
   play() { return this }
-  setLoop() { return this }
+  setLoop(mode, repetitions) {
+    this.loopMode = mode
+    this.repetitions = repetitions
+    return this
+  }
   isRunning() { return this.enabled && !this.paused }
   getClip() { return { duration: 1 } }
 
@@ -99,6 +105,28 @@ test('a contextual greeting survives speech but is interrupted by movement', () 
   assert.equal(controller.getState(), 'walking')
 })
 
+test('can play a contextual opening for three complete repetitions', () => {
+  const { controller } = createFixture()
+  const opening = new FakeAction('opening')
+
+  controller.playContextual(opening, { repetitions: 3 })
+
+  assert.equal(controller.getState(), 'contextual')
+  assert.equal(opening.repetitions, 3)
+})
+
+test('restarts a contextual animation when the same interaction repeats', () => {
+  const { controller } = createFixture()
+  const interaction = new FakeAction('interaction')
+
+  controller.playContextual(interaction)
+  const firstResetCount = interaction.resetCount
+  controller.playContextual(interaction)
+
+  assert.equal(controller.getState(), 'contextual')
+  assert.equal(interaction.resetCount, firstResetCount + 1)
+})
+
 test('long-idle variations are interruptible and avoid an immediate repeat', () => {
   const { controller, finish } = createFixture({
     idleVariationDelay: 2,
@@ -106,10 +134,20 @@ test('long-idle variations are interruptible and avoid an immediate repeat', () 
   })
   const first = new FakeAction('first')
   const second = new FakeAction('second')
-  controller.setIdleVariations([first, second])
+  controller.setIdleVariations([
+    {
+      id: 'first',
+      steps: [{ action: first, repetitions: 3 }],
+    },
+    {
+      id: 'second',
+      steps: [{ action: second, repetitions: 3 }],
+    },
+  ])
 
   controller.update(2.1)
   assert.equal(controller.getState(), 'long-idle')
+  assert.equal(first.repetitions, 3)
   finish(first)
   assert.equal(controller.getState(), 'idle')
 
@@ -122,6 +160,69 @@ test('long-idle variations are interruptible and avoid an immediate repeat', () 
   assert.equal(controller.getState(), 'long-idle')
   controller.setSpeaking(true)
   assert.equal(controller.getState(), 'talking')
+})
+
+test('keeps existing single-action idle variations compatible', () => {
+  const { controller } = createFixture({ idleVariationDelay: 1 })
+  const variation = new FakeAction('legacy-variation')
+
+  controller.setIdleVariations([variation])
+  controller.update(1.1)
+
+  assert.equal(controller.getState(), 'long-idle')
+  assert.equal(variation.repetitions, 1)
+})
+
+test('plays a multi-step long-idle variation before returning to idle', () => {
+  const { controller, finish } = createFixture({ idleVariationDelay: 1 })
+  const enter = new FakeAction('spell-enter')
+  const idle = new FakeAction('spell-idle')
+  const exit = new FakeAction('spell-exit')
+  controller.setIdleVariations([{
+    id: 'spell',
+    steps: [
+      { action: enter, repetitions: 1 },
+      { action: idle, repetitions: 3 },
+      { action: exit, repetitions: 1 },
+    ],
+  }])
+
+  controller.update(1.1)
+  assert.equal(controller.getState(), 'long-idle')
+  finish(enter)
+  assert.equal(idle.repetitions, 3)
+  finish(idle)
+  finish(exit)
+  assert.equal(controller.getState(), 'idle')
+})
+
+test('plays a finite preview sequence and returns to the core state', () => {
+  const { controller, finish } = createFixture()
+  const enter = new FakeAction('enter')
+  const idle = new FakeAction('sequence-idle')
+  const exit = new FakeAction('exit')
+  let completed = false
+
+  controller.playPreviewSequence([
+    { action: enter, repetitions: 1 },
+    { action: idle, repetitions: 3 },
+    { action: exit, repetitions: 1 },
+  ], {
+    onComplete: () => {
+      completed = true
+    },
+  })
+
+  assert.equal(controller.getState(), 'preview')
+  assert.equal(enter.repetitions, 1)
+  finish(enter)
+  assert.equal(controller.getState(), 'preview')
+  assert.equal(idle.repetitions, 3)
+  finish(idle)
+  assert.equal(exit.repetitions, 1)
+  finish(exit)
+  assert.equal(controller.getState(), 'idle')
+  assert.equal(completed, true)
 })
 
 test('a preview returns to the current core state when it finishes', () => {
