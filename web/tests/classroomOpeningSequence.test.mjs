@@ -81,8 +81,8 @@ test('does not replay an opening greeting that already started', () => {
   }), false)
 })
 
-test('gives the greeting time to complete its downward motion before fading', () => {
+test('reveals early enough to show most of the replacement greeting', () => {
   assert.ok(
-    OPENING_GREETING_REVEAL_DELAY_MS >= OPENING_FADE_DURATION_MS * 2,
+    OPENING_GREETING_REVEAL_DELAY_MS <= OPENING_FADE_DURATION_MS,
   )
 })

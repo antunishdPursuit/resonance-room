@@ -3,16 +3,22 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm'
 import {
-  createVRMAnimationClip,
-  VRMAnimationLoaderPlugin,
   VRMLookAtQuaternionProxy,
 } from '@pixiv/three-vrm-animation'
 import { createBlinkState, updateBlink } from '../animations/idle.js'
+import {
+  AVATAR_ANIMATION_ASSIGNMENTS,
+  getAvailableAnimationPreviewGroups,
+  getAnimationPreviewLabel,
+  getAnimationPreviewSequence,
+  isAnimationPreviewSequence,
+  LONG_IDLE_VARIATIONS,
+  shouldLoopAnimationPreview,
+} from '../animations/animationPreview.js'
 import { createHumanoidAnimationClip } from '../animations/createHumanoidAnimation.js'
 import { createAvatarAnimationController } from '../animations/avatarAnimationController.js'
 import { disableUnwantedSpringBones } from '../animations/avatarPhysics.js'
 import { applyRestPose } from '../animations/avatarRestPose.js'
-import { scheduleLongIdleAnimationLoad } from '../animations/longIdleAnimationLoading.js'
 import { createLipSyncState, startSpeaking, stopSpeaking, updateLipSync } from '../animations/lipsync.js'
 import {
   createSpeakingFaceState,
@@ -62,24 +68,6 @@ const COLLISION_DEBUG_ENABLED = import.meta.env.DEV
   && PAGE_PARAMETERS.get('debugCollisions') === '1'
 const ANIMATION_PREVIEW_ENABLED = import.meta.env.DEV
   && PAGE_PARAMETERS.get('testAnimations') === '1'
-const QUATERNIUS_PREVIEW_ANIMATIONS = [
-  'Idle_Loop',
-  'Idle_Talking_Loop',
-  'Walk_Loop',
-  'Walk_Formal_Loop',
-  'Jog_Fwd_Loop',
-]
-const VRMA_PREVIEW_ANIMATIONS = [
-  { id: 'VRMA_01', label: 'VRMA 01 — Show full body' },
-  { id: 'VRMA_02', label: 'VRMA 02 — Greeting' },
-  { id: 'VRMA_03', label: 'VRMA 03 — Peace sign' },
-  { id: 'VRMA_04', label: 'VRMA 04 — Shoot' },
-  { id: 'VRMA_05', label: 'VRMA 05 — Spin' },
-  { id: 'VRMA_06', label: 'VRMA 06 — Model pose' },
-  { id: 'VRMA_07', label: 'VRMA 07 — Squat' },
-]
-const LONG_IDLE_ANIMATION_IDS = ['VRMA_01', 'VRMA_03', 'VRMA_06']
-
 export default function AvatarScene() {
   const canvasRef  = useRef(null)
   const vrmRef     = useRef(null)
@@ -97,6 +85,7 @@ export default function AvatarScene() {
   const animationPreviewRef = useRef(null)
   const animationControllerRef = useRef(null)
   const openingGreetingActionRef = useRef(null)
+  const boardInteractionActionRef = useRef(null)
   const openingGreetingPlayedRef = useRef(false)
   const [messages,      setMessages]      = useState([])
   const [loading,       setLoading]       = useState(false)
@@ -115,7 +104,8 @@ export default function AvatarScene() {
   const [collisionZonesVisible, setCollisionZonesVisible] = useState(true)
   const [movementReady, setMovementReady] = useState(false)
   const [previewAnimation, setPreviewAnimation] = useState('Idle_Loop')
-  const [loopVrmaPreview, setLoopVrmaPreview] = useState(false)
+  const [loopAnimationPreview, setLoopAnimationPreview] = useState(false)
+  const [animationPreviewGroups, setAnimationPreviewGroups] = useState([])
   const [animationPreviewReady, setAnimationPreviewReady] = useState(false)
   const [animationPreviewStatus, setAnimationPreviewStatus] = useState('Loading animations…')
   const [classroomReady, setClassroomReady] = useState(false)
@@ -180,6 +170,7 @@ export default function AvatarScene() {
     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       animationControllerRef.current?.playContextual(
         openingGreetingActionRef.current,
+        { repetitions: 3 },
       )
     }
     speak(WELCOME_PROMPT)
@@ -209,49 +200,7 @@ export default function AvatarScene() {
     let animationController = null
     let recommendationBoard = null
     let recommendationBoardInteraction = null
-    let cancelLongIdleAnimationLoad = null
     const previewActions = new Map()
-    const previewLoads = new Map()
-
-    function loadVrmaPreview(id) {
-      if (disposed) return Promise.resolve(null)
-
-      if (previewActions.has(id)) {
-        return Promise.resolve(previewActions.get(id))
-      }
-      if (previewLoads.has(id)) {
-        return previewLoads.get(id)
-      }
-
-      const loadPromise = new Promise((resolve, reject) => {
-        loader.load(
-          `/vrma/${id}.vrma`,
-          (gltf) => {
-            if (disposed) {
-              resolve(null)
-              return
-            }
-
-            const vrmAnimation = gltf.userData.vrmAnimations?.[0]
-            if (!vrmAnimation || !vrmRef.current || !mixerRef.current) {
-              reject(new Error(`${id} did not contain a usable VRM animation.`))
-              return
-            }
-
-            const clip = createVRMAnimationClip(vrmAnimation, vrmRef.current)
-            clip.name = id
-            const action = mixerRef.current.clipAction(clip)
-            previewActions.set(id, action)
-            resolve(action)
-          },
-          undefined,
-          reject,
-        )
-      })
-
-      previewLoads.set(id, loadPromise)
-      return loadPromise
-    }
 
     function startMovementIfReady() {
       if (
@@ -325,7 +274,6 @@ export default function AvatarScene() {
     // Shared loader
     const loader = new GLTFLoader()
     loader.register((parser) => new VRMLoaderPlugin(parser))
-    loader.register((parser) => new VRMAnimationLoaderPlugin(parser))
 
     // Classroom environment
     loader.load(
@@ -355,6 +303,9 @@ export default function AvatarScene() {
             boardInteractionMinimumZ,
           ),
           onToggleSong: song => {
+            animationControllerRef.current?.playContextual(
+              boardInteractionActionRef.current,
+            )
             setPickedSongs(prev => toggleSongSelection(prev, song))
           },
         })
@@ -471,10 +422,10 @@ export default function AvatarScene() {
             }
 
             const coreActions = {
-              idle: actionFor('Idle_Loop'),
-              talking: actionFor('Idle_Talking_Loop'),
-              walking: actionFor('Walk_Formal_Loop'),
-              running: actionFor('Jog_Fwd_Loop'),
+              idle: actionFor(AVATAR_ANIMATION_ASSIGNMENTS.idle),
+              talking: actionFor(AVATAR_ANIMATION_ASSIGNMENTS.talking),
+              walking: actionFor(AVATAR_ANIMATION_ASSIGNMENTS.walking),
+              running: actionFor(AVATAR_ANIMATION_ASSIGNMENTS.running),
             }
             if (Object.values(coreActions).some(action => !action)) {
               console.error(
@@ -492,61 +443,76 @@ export default function AvatarScene() {
               idleVariationsEnabled,
             })
             animationControllerRef.current = animationController
-            if (idleVariationsEnabled) {
-              cancelLongIdleAnimationLoad = scheduleLongIdleAnimationLoad(() => {
-                Promise.all(LONG_IDLE_ANIMATION_IDS.map(loadVrmaPreview))
-                  .then((actions) => {
-                    if (
-                      !disposed
-                      && animationControllerRef.current === animationController
-                    ) {
-                      animationController.setIdleVariations(actions)
-                    }
-                  })
-                  .catch(error => console.error('Long-idle animation load error:', error))
-              })
+            animationController.setIdleVariations(
+              LONG_IDLE_VARIATIONS.map(variation => ({
+                ...variation,
+                steps: variation.steps.map(step => ({
+                  ...step,
+                  action: actionFor(step.name),
+                })),
+              })),
+            )
+            openingGreetingActionRef.current = actionFor(
+              AVATAR_ANIMATION_ASSIGNMENTS.openingGreeting,
+            )
+            boardInteractionActionRef.current = actionFor(
+              AVATAR_ANIMATION_ASSIGNMENTS.interacting,
+            )
+            if (!openingGreetingActionRef.current) {
+              console.error(
+                `Opening greeting load error: ${AVATAR_ANIMATION_ASSIGNMENTS.openingGreeting} was not found.`,
+              )
             }
-            loadVrmaPreview('VRMA_02')
-              .then((action) => {
-                if (
-                  !disposed
-                  && animationControllerRef.current === animationController
-                ) {
-                  openingGreetingActionRef.current = action
-                  setOpeningGreetingReady(true)
-                }
-              })
-              .catch((error) => {
-                if (disposed) return
-                console.error('Opening greeting load error:', error)
-                setOpeningGreetingReady(true)
-              })
+            setOpeningGreetingReady(true)
 
             if (ANIMATION_PREVIEW_ENABLED) {
-              previewActions.set('Idle_Loop', coreActions.idle)
-              previewActions.set('Idle_Talking_Loop', coreActions.talking)
-              previewActions.set('Walk_Formal_Loop', coreActions.walking)
-              previewActions.set('Jog_Fwd_Loop', coreActions.running)
-              previewActions.set('Walk_Loop', actionFor('Walk_Loop'))
+              const availableAnimations = animationGltf.animations
+                .map(animation => animation.name)
+                .filter(Boolean)
+              availableAnimations.forEach((name) => {
+                previewActions.set(name, actionFor(name))
+              })
+              setAnimationPreviewGroups(
+                getAvailableAnimationPreviewGroups(availableAnimations),
+              )
 
               animationPreviewRef.current = {
-                async play(id, { loopVrma = false } = {}) {
+                play(id, { loop = false } = {}) {
                   try {
                     if (id === 'Current_Pose') {
                       animationController.returnToCoreState()
                       setAnimationPreviewStatus('Current core state')
                       return
                     }
-                    setAnimationPreviewStatus(`Loading ${id}…`)
-                    const action = id.startsWith('VRMA_')
-                      ? await loadVrmaPreview(id)
-                      : previewActions.get(id)
+                    const sequence = getAnimationPreviewSequence(id)
+                    if (sequence) {
+                      const steps = sequence.map(step => ({
+                        ...step,
+                        action: previewActions.get(step.name),
+                      }))
+                      if (steps.some(step => !step.action)) {
+                        throw new Error(`${id} is incomplete.`)
+                      }
+                      animationController.playPreviewSequence(steps, {
+                        onComplete: () => {
+                          setAnimationPreviewStatus('Current core state')
+                        },
+                      })
+                      setAnimationPreviewStatus(`Playing ${id}`)
+                      return
+                    }
+                    const action = previewActions.get(id)
 
                     if (!action) {
                       throw new Error(`${id} is not available.`)
                     }
                     animationController.playPreview(action, {
-                      loop: !id.startsWith('VRMA_') || loopVrma,
+                      loop,
+                      onComplete: loop
+                        ? null
+                        : () => {
+                          setAnimationPreviewStatus('Current core state')
+                        },
                     })
                     setAnimationPreviewStatus(`Playing ${id}`)
                   } catch (error) {
@@ -697,12 +663,11 @@ export default function AvatarScene() {
       occlusionController = null
       resetCameraRef.current = null
       animationPreviewRef.current = null
-      cancelLongIdleAnimationLoad?.()
-      cancelLongIdleAnimationLoad = null
       animationController?.dispose()
       animationController = null
       animationControllerRef.current = null
       openingGreetingActionRef.current = null
+      boardInteractionActionRef.current = null
       delete window.__ESME_MOVEMENT__
       collisionDebugView?.dispose()
       recommendationBoardInteraction?.dispose()
@@ -973,37 +938,43 @@ export default function AvatarScene() {
           <select
             id="animation-preview-select"
             value={previewAnimation}
-            onChange={event => setPreviewAnimation(event.target.value)}
+            onChange={(event) => {
+              const animationName = event.target.value
+              const loop = shouldLoopAnimationPreview(animationName)
+              setPreviewAnimation(animationName)
+              setLoopAnimationPreview(loop)
+              animationPreviewRef.current?.play(animationName, { loop })
+            }}
             disabled={!animationPreviewReady}
           >
             <option value="Current_Pose">Current rest pose</option>
-            {QUATERNIUS_PREVIEW_ANIMATIONS.map(name => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-            {VRMA_PREVIEW_ANIMATIONS.map(({ id, label }) => (
-              <option key={id} value={id}>{label}</option>
+            {animationPreviewGroups.map(group => (
+              <optgroup key={group.label} label={group.label}>
+                {group.names.map(name => (
+                  <option key={name} value={name}>
+                    {getAnimationPreviewLabel(name)}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
           <label className="animation-preview__loop-option">
             <input
               type="checkbox"
-              checked={loopVrmaPreview}
-              onChange={event => setLoopVrmaPreview(event.target.checked)}
-              disabled={!previewAnimation.startsWith('VRMA_')}
+              checked={loopAnimationPreview}
+              onChange={(event) => {
+                const loop = event.target.checked
+                setLoopAnimationPreview(loop)
+                animationPreviewRef.current?.play(previewAnimation, { loop })
+              }}
+              disabled={
+                previewAnimation === 'Current_Pose'
+                || isAnimationPreviewSequence(previewAnimation)
+              }
             />
-            Repeat selected VRMA
+            Repeat selected animation
           </label>
           <div className="animation-preview__actions">
-            <button
-              type="button"
-              onClick={() => animationPreviewRef.current?.play(
-                previewAnimation,
-                { loopVrma: loopVrmaPreview },
-              )}
-              disabled={!animationPreviewReady}
-            >
-              Play
-            </button>
             <button
               type="button"
               onClick={() => animationPreviewRef.current?.reset()}
