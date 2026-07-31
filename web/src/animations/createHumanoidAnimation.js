@@ -52,7 +52,6 @@ const VRM_BONE_PARENT = {
   rightFoot: 'rightLowerLeg',
   rightToes: 'rightFoot',
 }
-
 const vector = new THREE.Vector3()
 const scale = new THREE.Vector3()
 const sourceRestQuaternion = new THREE.Quaternion()
@@ -169,31 +168,4 @@ export function createHumanoidAnimationClip({
   )
   clip.name = sourceClip.name
   return clip
-}
-
-export function createCurrentPoseClip({ vrm, animatedClip }) {
-  const tracks = animatedClip.tracks.flatMap((track) => {
-    if (!track.name.endsWith('.quaternion')) return []
-
-    const nodeName = track.name.slice(0, -'.quaternion'.length)
-    const node = vrm.scene.getObjectByName(nodeName)
-    if (!node) return []
-
-    return new THREE.QuaternionKeyframeTrack(
-      track.name,
-      [0, 1],
-      [
-        node.quaternion.x,
-        node.quaternion.y,
-        node.quaternion.z,
-        node.quaternion.w,
-        node.quaternion.x,
-        node.quaternion.y,
-        node.quaternion.z,
-        node.quaternion.w,
-      ],
-    )
-  })
-
-  return new THREE.AnimationClip('Esme_Rest_Pose', 1, tracks)
 }
