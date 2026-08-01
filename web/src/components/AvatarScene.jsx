@@ -59,13 +59,14 @@ import {
 import { calculateSpeechBubblePosition } from '../ui/speechBubblePosition.js'
 import { createAppConfig } from '../config/appConfig.js'
 import { createChatClient } from '../chat/chatClient.js'
+import { createBackendVoiceClient } from '../voice/backendVoiceClient.js'
 
 const APP_CONFIG = createAppConfig({
   mode: import.meta.env.VITE_APP_MODE,
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL,
 })
 const REQUEST_CHAT_REPLY = createChatClient({ appConfig: APP_CONFIG })
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8001').replace(/\/$/, '')
+const BACKEND_VOICE = createBackendVoiceClient({ appConfig: APP_CONFIG })
 const MAX_CHAT_MESSAGES = 20
 const WELCOME_PROMPT = 'Hi, I\u2019m Esme. What kind of songs do you like? You can name a genre, artist, mood, or activity.'
 const PAGE_PARAMETERS = new URLSearchParams(window.location.search)
@@ -121,7 +122,7 @@ export default function AvatarScene() {
   const recommendationsRef = useRef([])
   const pickedSongsRef = useRef([])
   const voiceEnabledRef  = useRef(false)
-  const useElevenlabsRef = useRef(true)
+  const useElevenlabsRef = useRef(false)
 
   useEffect(() => { messagesRef.current      = messages      }, [messages])
   useEffect(() => { voiceEnabledRef.current  = voiceEnabled  }, [voiceEnabled])
@@ -145,14 +146,19 @@ export default function AvatarScene() {
   }, [latestRecommendationMessage])
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/tts/available`)
-      .then(r => r.json())
-      .then(data => {
-        setElevenLabsAvailable(data.elevenlabs)
-        setUseElevenLabs(data.elevenlabs)
-        useElevenlabsRef.current = data.elevenlabs
+    let cancelled = false
+
+    BACKEND_VOICE.checkAvailability()
+      .then((available) => {
+        if (cancelled) return
+        setElevenLabsAvailable(available)
+        setUseElevenLabs(available)
+        useElevenlabsRef.current = available
       })
-      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -692,13 +698,8 @@ export default function AvatarScene() {
 
     if (useElevenlabsRef.current) {
       try {
-        const res = await fetch(`${API_BASE_URL}/tts`, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ text }),
-        })
-        if (!res.ok) throw new Error('ElevenLabs unavailable')
-        const blob     = await res.blob()
+        const blob = await BACKEND_VOICE.synthesize(text)
+        if (!blob) throw new Error('ElevenLabs unavailable')
         const url      = URL.createObjectURL(blob)
         const audio    = new Audio(url)
         const audioCtx = new AudioContext()
@@ -1149,7 +1150,13 @@ export default function AvatarScene() {
           className={`button button--secondary ${useElevenLabs && elevenLabsAvailable ? 'button--accent' : ''}`}
           onClick={() => elevenLabsAvailable && setUseElevenLabs(v => !v)}
           disabled={!elevenLabsAvailable}
-          title={!elevenLabsAvailable ? 'Add ELEVENLABS_API_KEY to backend/.env to enable' : useElevenLabs ? 'Switch to browser voice' : 'Switch to ElevenLabs voice'}
+          title={!APP_CONFIG.usesBackend
+            ? 'Browser voice is used in static mode'
+            : !elevenLabsAvailable
+              ? 'ElevenLabs is unavailable from the backend'
+              : useElevenLabs
+                ? 'Switch to browser voice'
+                : 'Switch to ElevenLabs voice'}
         >
           {useElevenLabs && elevenLabsAvailable ? 'ElevenLabs voice' : 'Browser voice'}
         </button>
@@ -1201,7 +1208,7 @@ export default function AvatarScene() {
         <p className="control-dock__fallback-note" role="note">
           {APP_CONFIG.usesBackend
             ? 'Backend mode: Recommendations and optional ElevenLabs speech use FastAPI. Browser speech remains available.'
-            : 'Static demo: Recommendations use the built-in 18-song catalog. Browser speech remains available if the voice service is unavailable.'}
+            : 'Static demo: Recommendations use the built-in 18-song catalog and voice stays in the browser.'}
         </p>
       </section>
     </main>
