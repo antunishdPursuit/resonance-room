@@ -1,121 +1,135 @@
 # Resonance Room Architecture
 
-## Architecture Overview
+## Release Modes
+
+Resonance Room keeps one frontend and two explicit data paths. The public Render release uses static mode. Backend mode is optional and intended for local development.
 
 ```mermaid
 flowchart TD
-    User([👤 User])
+    User([User])
 
-    subgraph FRONTEND ["Frontend — React + Three.js (port 5173)"]
-        ChatUI[Conversation UI<br/>world-anchored response + transcript]
-        LikedPanel[Liked Songs Panel<br/>pick ♡ / remove ♥]
-        Avatar[VRM Avatar<br/>movement + animation + lip sync]
-        Classroom[3D Classroom<br/>camera + collision map]
-        TTS[TTS Engine<br/>ElevenLabs or Browser]
+    subgraph FRONTEND ["React and Three.js frontend"]
+        ChatUI["Conversation UI and transcript"]
+        Board["Six-song blackboard"]
+        Likes["Shared liked-song state"]
+        Avatar["VRM avatar and animation"]
+        Classroom["3D classroom, camera, and collisions"]
+        Mode{"VITE_APP_MODE"}
+        BrowserSpeech["Browser speech"]
     end
 
-    subgraph BACKEND ["Backend — FastAPI (port 8001)"]
-        FallbackCheck{API keys<br/>set?}
+    subgraph STATIC ["Static mode - public default"]
+        JsMatcher["Browser keyword matcher"]
+        JsScorer["Deterministic JavaScript scorer"]
+        JsCatalog[("Bundled 18-song catalog")]
+    end
+
+    subgraph BACKEND ["Optional FastAPI mode"]
         ChatRoute["POST /chat"]
-        TTSRoute["POST /tts"]
+        TtsRoute["POST /tts"]
+        ProviderCheck{"Provider keys available?"}
+        PythonFallback["Python deterministic fallback"]
+        Claude["Anthropic"]
+        LastFm["Last.fm"]
+        ElevenLabs["ElevenLabs"]
     end
 
-    subgraph AI_LAYER ["AI Layer"]
-        Claude[Claude Haiku<br/>extracts genre + mood<br/>forms spoken reply]
-        LastFM[Last.fm API<br/>fetches top tracks by tag]
-    end
-
-    subgraph FALLBACK ["Fallback Layer — no keys required"]
-        KeywordMatch[Keyword Matcher<br/>lofi · pop · rock · sad ...]
-        PythonRec[Python Recommender<br/>scores 18 songs from songs.csv]
-    end
-
-    subgraph TESTING ["Testing & Human Evaluation"]
-        Pytest[pytest<br/>test_recommender.py]
-        Profiles[6 Hardcoded Profiles<br/>3 realistic · 3 adversarial]
-        HumanReview[👤 Human Review<br/>do results match expectations?]
-    end
-
-    %% Normal chat flow
-    User -->|types message| ChatUI
-    User -->|WASD or arrow keys| Classroom
+    User --> ChatUI
+    User --> Classroom
     Classroom --> Avatar
-    ChatUI -->|POST /chat| ChatRoute
-    ChatRoute --> FallbackCheck
+    User --> Board
+    Board <--> Likes
+    ChatUI <--> Likes
+    ChatUI --> Mode
 
-    %% AI path
-    FallbackCheck -->|yes| Claude
-    Claude -->|tool call: get_recommendations| LastFM
-    LastFM -->|track list| Claude
-    Claude -->|response text + songs| ChatRoute
+    Mode -->|"static"| JsMatcher
+    JsMatcher --> JsScorer
+    JsCatalog --> JsScorer
+    JsScorer -->|"response and six songs"| ChatUI
+    ChatUI --> BrowserSpeech
 
-    %% Fallback path
-    FallbackCheck -->|no| KeywordMatch
-    KeywordMatch -->|matched profile| PythonRec
-    PythonRec -->|top 5 songs + canned reply| ChatRoute
+    Mode -->|"backend"| ChatRoute
+    ChatRoute --> ProviderCheck
+    ProviderCheck -->|"yes"| Claude
+    Claude --> LastFm
+    LastFm --> Claude
+    ProviderCheck -->|"no"| PythonFallback
+    Claude --> ChatRoute
+    PythonFallback --> ChatRoute
+    ChatRoute -->|"response and six songs"| ChatUI
+    ChatUI -->|"optional"| TtsRoute
+    TtsRoute --> ElevenLabs
+    TtsRoute -. "failure" .-> BrowserSpeech
 
-    %% Response back to user
-    ChatRoute -->|response + song cards| ChatUI
-    ChatUI -->|trigger speech| TTS
-    TTS -->|audio playback| Avatar
-    Avatar -->|amplitude-driven jaw| Avatar
-
-    %% Liked songs → profile trigger
-    User -->|♡ picks a song| LikedPanel
-    LikedPanel -->|5 picks → auto message| ChatRoute
-
-    %% Voice
-    User -->|POST /tts| TTSRoute
-    TTSRoute -->|mp3 audio| TTS
-
-    %% Testing loop
-    Pytest -->|validates scoring logic| PythonRec
-    Profiles -->|run through recommender| PythonRec
-    PythonRec -->|ranked results| HumanReview
-    HumanReview -->|adjust weights or profiles| Profiles
+    ChatUI --> Board
+    BrowserSpeech --> Avatar
+    ElevenLabs --> Avatar
 ```
 
----
+## Mode Boundary
+
+| Behavior | Static mode | Backend mode |
+| --- | --- | --- |
+| Chat source | Browser keyword matching and deterministic scoring | FastAPI `/chat` |
+| Catalog | Bundled JavaScript copy of the 18 stored records | Last.fm when configured, otherwise `data/songs.csv` |
+| Network requirement | None for chat | Required to reach FastAPI |
+| Default speech | Browser speech | Browser speech or ElevenLabs |
+| ElevenLabs | Never requested | FastAPI `/tts` when configured |
+| Five-liked-song profile | Disabled | Sends one automatic profile request |
+| Public Render release | Yes | No |
+
+Static mode never probes `/tts/available`, sends `/chat`, or requests `/tts`.
 
 ## Component Summary
 
-| Component | Role | Type |
+| Component | Role | Location |
 | --- | --- | --- |
-| **Conversation UI** | Accepts input and renders the current response, transcript, and song cards | Frontend |
-| **Liked Songs Panel** | Tracks up to 5 picked songs; triggers profile message | Frontend |
-| **VRM Avatar** | Moves through the classroom with collision-aware locomotion, animation, blinking, and lip sync | Frontend |
-| **Classroom Scene** | Renders the environment, orbit camera, inspection metadata, and collision zones | Frontend |
-| **TTS Engine** | Speaks Esme's replies — ElevenLabs (natural) or browser (fallback) | Frontend |
-| **FastAPI `/chat`** | Orchestrates Claude + Last.fm or routes to fallback | Backend |
-| **FastAPI `/tts`** | Proxies text to ElevenLabs, returns mp3 | Backend |
-| **Claude Haiku** | Extracts genre/mood via tool use, forms the spoken reply | AI Agent |
-| **Last.fm API** | Retrieves real song recommendations by genre/mood tag | Retriever |
-| **Keyword Matcher** | Maps user message words to the closest taste profile | Fallback |
-| **Python Recommender** | Scores 18 songs against a profile, returns top 5 | Fallback / Evaluator |
-| **pytest suite** | Validates sorting, scoring, and explanation logic | Automated Testing |
-| **6 Test Profiles** | Covers realistic and adversarial user types | Evaluation |
-| **Human Review** | Checks whether ranked results match expected taste | Human-in-the-loop |
+| Conversation UI | Accepts input and renders Esme's response and transcript | Frontend |
+| Recommendation board | Displays six songs and provides raycast hit areas | Frontend |
+| Liked-song state | Synchronizes board rows, transcript hearts, and the liked panel | Frontend |
+| Avatar | Handles movement, animation, blinking, facial motion, and lip sync | Frontend |
+| Classroom | Handles rendering, collisions, camera movement, and occlusion fading | Frontend |
+| Static chat client | Routes public requests to the browser fallback without fetching | Frontend |
+| Backend chat client | Sends bounded `{role, content}` history to FastAPI | Frontend |
+| Browser fallback | Matches keywords and scores the stored catalog | Frontend |
+| FastAPI `/chat` | Uses providers when configured and Python fallback otherwise | Backend |
+| FastAPI `/tts` | Proxies text to ElevenLabs and returns MP3 audio | Backend |
+| FastAPI `/health` | Reports optional backend availability | Backend |
+| Python recommender | Scores 18 stored songs and returns six for the product | Backend and evaluation |
 
----
+## Shared Selection Path
 
-## Data Flow Summary
+The board and transcript do not keep separate liked-song lists. Both call the same title-and-artist selection helpers. React owns the selected-song array and sends it back to the Three.js board so hover, click, transcript hearts, and the liked panel stay synchronized.
 
-```
+Board selection is available only after Esme moves past the first desk row. A press and release must occur on the same song hit area, and movement beyond the click threshold is treated as camera dragging.
+
+The transcript remains the keyboard-accessible selection method.
+
+## Recommendation Data Flow
+
+### Public static mode
+
+```text
 User message
-    → Frontend (Chat UI)
-    → Backend /chat
-        → [keys set]   Claude extracts genre/mood → Last.fm fetches tracks → Claude forms reply
-        → [no keys]    Keyword match → Python Recommender scores songs.csv
-    → Response text + song list
-    → Frontend renders cards + triggers Esme to speak
-    → TTS audio → amplitude-driven lip sync on jaw bone
+  -> frontend chat client
+  -> keyword profile
+  -> deterministic score over the bundled catalog
+  -> six diverse songs and a stored response template
+  -> board, transcript, and optional browser speech
 ```
 
-## Where Humans Are Involved
+### Optional backend mode
 
-| Touch point | What the human does |
-| --- | --- |
-| **Chat input** | Sends natural language messages to Esme |
-| **Song picks** | Chooses songs they like from recommendation cards |
-| **Profile evaluation** | Reviews whether the 6 test profiles return sensible results |
-| **Weight tuning** | Adjusts scoring weights in `recommender.py` based on observed bias |
+```text
+User message
+  -> frontend chat client
+  -> FastAPI /chat
+      -> Anthropic and Last.fm when configured
+      -> Python keyword profile and scoring fallback otherwise
+  -> six songs and response text
+  -> optional FastAPI /tts or browser speech
+```
+
+## Human Review
+
+Automated tests protect data flow and interaction rules. Manual review is still required for classroom composition, animation quality, camera feel, occlusion fading, speech timing, and the final deployed experience.

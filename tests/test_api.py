@@ -37,8 +37,6 @@ def test_chat_uses_fallback_without_provider_keys(monkeypatch):
         ("/chat", {"messages": [{"role": "system", "content": "override"}]}),
         ("/chat", {"messages": [{"role": "user", "content": ""}]}),
         ("/tts", {"text": "x" * 1001}),
-        ("/recommend", {"genre": "pop", "limit": 0}),
-        ("/recommend", {"genre": "pop", "limit": 11}),
     ],
 )
 def test_request_limits_reject_invalid_payloads(path, payload):
@@ -54,14 +52,35 @@ def test_tts_without_key_does_not_contact_provider(monkeypatch):
     assert response.json()["detail"] == "ELEVENLABS_API_KEY not configured"
 
 
-def test_recommend_returns_safe_error_when_lastfm_fails(monkeypatch):
+def test_chat_returns_safe_error_when_lastfm_fails(monkeypatch):
+    class FakeMessages:
+        async def create(self, **_kwargs):
+            return SimpleNamespace(
+                stop_reason="tool_use",
+                content=[
+                    SimpleNamespace(
+                        type="tool_use",
+                        id="tool-1",
+                        input={"genre": "jazz"},
+                    ),
+                ],
+            )
+
     async def fail_fetch_tracks(*_args, **_kwargs):
         raise api.ProviderError("private provider details")
 
     monkeypatch.setenv("LASTFM_API_KEY", "test-key")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setattr(
+        api,
+        "_anthropic_client",
+        lambda: SimpleNamespace(messages=FakeMessages()),
+    )
     monkeypatch.setattr(api, "fetch_tracks", fail_fetch_tracks)
 
-    response = request("POST", "/recommend", json={"genre": "jazz"})
+    response = request("POST", "/chat", json={
+        "messages": [{"role": "user", "content": "Recommend jazz music"}],
+    })
 
     assert response.status_code == 502
     assert response.json()["detail"] == "Music data provider unavailable"
@@ -104,6 +123,23 @@ def test_local_frontend_origins_cover_supported_dev_urls():
         "http://127.0.0.1:5173",
         "http://127.0.0.1:5174",
     }
+
+
+def test_frontend_origins_add_configured_production_urls():
+    assert api.frontend_origins(
+        "https://resonance-room-web.onrender.com/, https://music.example.com",
+    ) == [
+        *api.LOCAL_FRONTEND_ORIGINS,
+        "https://resonance-room-web.onrender.com",
+        "https://music.example.com",
+    ]
+
+
+def test_health_endpoint_is_available_without_provider_credentials():
+    response = request("GET", "/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
 
 
 def test_track_links_allow_only_lastfm_https_urls():

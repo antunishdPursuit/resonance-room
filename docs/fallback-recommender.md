@@ -1,6 +1,17 @@
 # How the Fallback Recommender Works
 
-Resonance Room uses this transparent local recommender when the Anthropic or Last.fm integration is unavailable. It scores a small bundled catalog against a listener profile and returns the closest matches with plain-language reasons.
+Resonance Room uses this transparent local recommender as the public frontend's default recommendation path. A JavaScript implementation runs entirely in the browser over the bundled 18-song catalog. The optional FastAPI mode uses the equivalent Python path when Anthropic or Last.fm is unavailable.
+
+---
+
+## Implementations and outputs
+
+- `web/src/recommendations/songCatalog.js` stores the 18 records used by static mode.
+- `web/src/recommendations/fallbackRecommender.js` matches the latest message, scores the catalog, and returns six title-and-artist records with a short response.
+- `data/songs.csv` stores the same 18 records for the Python backend and evaluation path.
+- `src/recommender.py` can also return scores and plain-language explanations for evaluation.
+
+The public song rows do not display the Python evaluator's per-song scores or explanations.
 
 ---
 
@@ -48,13 +59,15 @@ Every song in the catalog is scored against the user profile using a point syste
 1. Every song in the catalog gets a score
 2. Songs are sorted from highest to lowest score
 3. A diversity check runs: if two top songs are by the same artist, the lower-ranked one is skipped so the list feels more varied
-4. The top 5 songs after that check become the recommendations
+4. The requested number of songs after that check become the recommendations.
+   Resonance Room requests six for the classroom board; the standalone
+   evaluation uses five unless another value is supplied.
 
 ---
 
 ## Known biases and limitations
 
-- **Genre lock-in.** Because genre is worth +2.0 — more than any single numeric feature — a song in the wrong genre will almost never reach the top 5, even if it is a near-perfect match on every audio feature. A deeply acoustic, slow, melancholic *pop* song will lose to a mediocre *lofi* track for a "lofi" user.
+- **Genre lock-in.** Because genre is worth +2.0 — more than any single numeric feature — a song in the wrong genre will rarely reach the returned list, even if it is a near-perfect match on every audio feature. A deeply acoustic, slow, melancholic *pop* song will lose to a mediocre *lofi* track for a "lofi" user.
 
 - **Exact-match only for categories.** Genre and mood are all-or-nothing. A user who likes "lofi" gets zero credit for an "ambient" song, even though the two genres sound nearly identical. There is no partial credit for close categories.
 
@@ -68,37 +81,28 @@ Every song in the catalog is scored against the user profile using a point syste
 
 ```mermaid
 flowchart TD
-    A([User Profile\ngenre, mood, energy\nvalence, tempo\nacousticness, danceability])
-    B[(songs.csv\n18 songs)]
+    Message([User message])
+    StaticMatcher["JavaScript keyword matcher"]
+    BackendMatcher["Python keyword matcher"]
+    StaticCatalog[("songCatalog.js - 18 records")]
+    PythonCatalog[("songs.csv - 18 records")]
+    Profile["Target genre, mood, and audio features"]
 
-    A --> D
-    B -->|load_songs| C[Song list in memory]
-    C --> D
+    Message -->|"static mode"| StaticMatcher
+    Message -->|"FastAPI provider fallback"| BackendMatcher
+    StaticMatcher --> Profile
+    BackendMatcher --> Profile
 
-    D[For each song in catalog] --> E
+    StaticCatalog --> Score
+    PythonCatalog --> Score
+    Profile --> Score
 
-    subgraph SCORE ["score_song() — max 9.0 pts"]
-        E["Genre match?  yes +2.0  /  no +0.0"] --> F
-        F["Mood match?   yes +1.0  /  no +0.0"] --> G
-        G["Energy closeness  x2.0  — max +2.0"] --> H
-        H["Acousticness closeness  x1.5  — max +1.5"] --> I
-        I["Valence closeness  x1.0  — max +1.0"] --> J
-        J["Tempo closeness  x1.0  — max +1.0"] --> K
-        K["Danceability closeness  x0.5  — max +0.5"] --> L
-        L["Song total score  0.0 to 9.0"]
+    subgraph SCORE ["Equivalent deterministic scoring - maximum 9 points"]
+        Score["Score every song"] --> Sort["Sort by score"]
+        Sort --> Diversity["Prefer distinct artists"]
     end
 
-    L --> L2["Build explanation\ntop 3 reasons by points"]
-    L2 --> M{More songs\nto score?}
-    M -->|yes| D
-    M -->|no| N
-
-    N["Sort all songs highest to lowest score"] --> O
-
-    O{Enough distinct\nartists for k=5?}
-    O -->|yes| P["Diversity filter\none song per artist"]
-    O -->|no| Q["Take top 5 as-is"]
-
-    P --> R([Top 5 Recommendations\nwith score and explanation])
-    Q --> R
+    Diversity --> StaticOutput["Static product - six songs and short response"]
+    Diversity --> BackendOutput["Backend product - six songs"]
+    Diversity --> EvaluationOutput["Python evaluation - top five with scores and explanations"]
 ```

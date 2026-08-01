@@ -469,6 +469,16 @@ summary:focus-visible {
   text-align: left;
 }
 
+.control-dock__fallback-note {
+  order: 4;
+  flex: 1 0 100%;
+  margin: 0;
+  color: var(--esme-muted);
+  font-size: 0.68rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
 .animation-preview {
   bottom: 96px;
   left: 16px;

@@ -3,11 +3,18 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm'
 import {
-  createVRMAnimationClip,
-  VRMAnimationLoaderPlugin,
   VRMLookAtQuaternionProxy,
 } from '@pixiv/three-vrm-animation'
 import { createBlinkState, updateBlink } from '../animations/idle.js'
+import {
+  AVATAR_ANIMATION_ASSIGNMENTS,
+  getAvailableAnimationPreviewGroups,
+  getAnimationPreviewLabel,
+  getAnimationPreviewSequence,
+  isAnimationPreviewSequence,
+  LONG_IDLE_VARIATIONS,
+  shouldLoopAnimationPreview,
+} from '../animations/animationPreview.js'
 import { createHumanoidAnimationClip } from '../animations/createHumanoidAnimation.js'
 import { createAvatarAnimationController } from '../animations/avatarAnimationController.js'
 import { disableUnwantedSpringBones } from '../animations/avatarPhysics.js'
@@ -50,8 +57,16 @@ import {
   toggleSongSelection,
 } from '../ui/songSelection.js'
 import { calculateSpeechBubblePosition } from '../ui/speechBubblePosition.js'
+import { createAppConfig } from '../config/appConfig.js'
+import { createChatClient } from '../chat/chatClient.js'
+import { createBackendVoiceClient } from '../voice/backendVoiceClient.js'
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8001').replace(/\/$/, '')
+const APP_CONFIG = createAppConfig({
+  mode: import.meta.env.VITE_APP_MODE,
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL,
+})
+const REQUEST_CHAT_REPLY = createChatClient({ appConfig: APP_CONFIG })
+const BACKEND_VOICE = createBackendVoiceClient({ appConfig: APP_CONFIG })
 const MAX_CHAT_MESSAGES = 20
 const WELCOME_PROMPT = 'Hi, I\u2019m Esme. What kind of songs do you like? You can name a genre, artist, mood, or activity.'
 const PAGE_PARAMETERS = new URLSearchParams(window.location.search)
@@ -61,28 +76,9 @@ const COLLISION_DEBUG_ENABLED = import.meta.env.DEV
   && PAGE_PARAMETERS.get('debugCollisions') === '1'
 const ANIMATION_PREVIEW_ENABLED = import.meta.env.DEV
   && PAGE_PARAMETERS.get('testAnimations') === '1'
-const QUATERNIUS_PREVIEW_ANIMATIONS = [
-  'Idle_Loop',
-  'Idle_Talking_Loop',
-  'Walk_Loop',
-  'Walk_Formal_Loop',
-  'Jog_Fwd_Loop',
-]
-const VRMA_PREVIEW_ANIMATIONS = [
-  { id: 'VRMA_01', label: 'VRMA 01 — Show full body' },
-  { id: 'VRMA_02', label: 'VRMA 02 — Greeting' },
-  { id: 'VRMA_03', label: 'VRMA 03 — Peace sign' },
-  { id: 'VRMA_04', label: 'VRMA 04 — Shoot' },
-  { id: 'VRMA_05', label: 'VRMA 05 — Spin' },
-  { id: 'VRMA_06', label: 'VRMA 06 — Model pose' },
-  { id: 'VRMA_07', label: 'VRMA 07 — Squat' },
-]
-const LONG_IDLE_ANIMATION_IDS = ['VRMA_01', 'VRMA_03', 'VRMA_06']
-
 export default function AvatarScene() {
   const canvasRef  = useRef(null)
   const vrmRef     = useRef(null)
-  const mixerRef   = useRef(null)
   const speakRef        = useRef(null)
   const inputRef        = useRef(null)
   const speechBubbleRef = useRef(null)
@@ -96,6 +92,7 @@ export default function AvatarScene() {
   const animationPreviewRef = useRef(null)
   const animationControllerRef = useRef(null)
   const openingGreetingActionRef = useRef(null)
+  const boardInteractionActionRef = useRef(null)
   const openingGreetingPlayedRef = useRef(false)
   const [messages,      setMessages]      = useState([])
   const [loading,       setLoading]       = useState(false)
@@ -114,7 +111,8 @@ export default function AvatarScene() {
   const [collisionZonesVisible, setCollisionZonesVisible] = useState(true)
   const [movementReady, setMovementReady] = useState(false)
   const [previewAnimation, setPreviewAnimation] = useState('Idle_Loop')
-  const [loopVrmaPreview, setLoopVrmaPreview] = useState(false)
+  const [loopAnimationPreview, setLoopAnimationPreview] = useState(false)
+  const [animationPreviewGroups, setAnimationPreviewGroups] = useState([])
   const [animationPreviewReady, setAnimationPreviewReady] = useState(false)
   const [animationPreviewStatus, setAnimationPreviewStatus] = useState('Loading animations…')
   const [classroomReady, setClassroomReady] = useState(false)
@@ -123,7 +121,7 @@ export default function AvatarScene() {
   const recommendationsRef = useRef([])
   const pickedSongsRef = useRef([])
   const voiceEnabledRef  = useRef(false)
-  const useElevenlabsRef = useRef(true)
+  const useElevenlabsRef = useRef(false)
 
   useEffect(() => { messagesRef.current      = messages      }, [messages])
   useEffect(() => { voiceEnabledRef.current  = voiceEnabled  }, [voiceEnabled])
@@ -147,18 +145,23 @@ export default function AvatarScene() {
   }, [latestRecommendationMessage])
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/tts/available`)
-      .then(r => r.json())
-      .then(data => {
-        setElevenLabsAvailable(data.elevenlabs)
-        setUseElevenLabs(data.elevenlabs)
-        useElevenlabsRef.current = data.elevenlabs
+    let cancelled = false
+
+    BACKEND_VOICE.checkAvailability()
+      .then((available) => {
+        if (cancelled) return
+        setElevenLabsAvailable(available)
+        setUseElevenLabs(available)
+        useElevenlabsRef.current = available
       })
-      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
-    if (pickedSongs.length === 5 && !profileBuilt) {
+    if (APP_CONFIG.usesBackend && pickedSongs.length === 5 && !profileBuilt) {
       setProfileBuilt(true)
       const songList = pickedSongs.map(s => `"${s.title}" by ${s.artist}`).join(', ')
       const autoMsg  = `I just picked 5 songs I love: ${songList}. Based on these picks, what can you tell about my music taste? Please recommend new songs I haven't heard — do not suggest any of the songs I just listed.`
@@ -179,6 +182,7 @@ export default function AvatarScene() {
     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       animationControllerRef.current?.playContextual(
         openingGreetingActionRef.current,
+        { repetitions: 3 },
       )
     }
     speak(WELCOME_PROMPT)
@@ -209,47 +213,6 @@ export default function AvatarScene() {
     let recommendationBoard = null
     let recommendationBoardInteraction = null
     const previewActions = new Map()
-    const previewLoads = new Map()
-
-    function loadVrmaPreview(id) {
-      if (disposed) return Promise.resolve(null)
-
-      if (previewActions.has(id)) {
-        return Promise.resolve(previewActions.get(id))
-      }
-      if (previewLoads.has(id)) {
-        return previewLoads.get(id)
-      }
-
-      const loadPromise = new Promise((resolve, reject) => {
-        loader.load(
-          `/vrma/${id}.vrma`,
-          (gltf) => {
-            if (disposed) {
-              resolve(null)
-              return
-            }
-
-            const vrmAnimation = gltf.userData.vrmAnimations?.[0]
-            if (!vrmAnimation || !vrmRef.current || !mixerRef.current) {
-              reject(new Error(`${id} did not contain a usable VRM animation.`))
-              return
-            }
-
-            const clip = createVRMAnimationClip(vrmAnimation, vrmRef.current)
-            clip.name = id
-            const action = mixerRef.current.clipAction(clip)
-            previewActions.set(id, action)
-            resolve(action)
-          },
-          undefined,
-          reject,
-        )
-      })
-
-      previewLoads.set(id, loadPromise)
-      return loadPromise
-    }
 
     function startMovementIfReady() {
       if (
@@ -323,7 +286,6 @@ export default function AvatarScene() {
     // Shared loader
     const loader = new GLTFLoader()
     loader.register((parser) => new VRMLoaderPlugin(parser))
-    loader.register((parser) => new VRMAnimationLoaderPlugin(parser))
 
     // Classroom environment
     loader.load(
@@ -353,6 +315,9 @@ export default function AvatarScene() {
             boardInteractionMinimumZ,
           ),
           onToggleSong: song => {
+            animationControllerRef.current?.playContextual(
+              boardInteractionActionRef.current,
+            )
             setPickedSongs(prev => toggleSongSelection(prev, song))
           },
         })
@@ -453,7 +418,6 @@ export default function AvatarScene() {
             if (disposed) return
 
             const mixer = new THREE.AnimationMixer(vrm.scene)
-            mixerRef.current = mixer
             const actionFor = (name) => {
               const sourceClip = animationGltf.animations.find(
                 animation => animation.name === name,
@@ -469,10 +433,10 @@ export default function AvatarScene() {
             }
 
             const coreActions = {
-              idle: actionFor('Idle_Loop'),
-              talking: actionFor('Idle_Talking_Loop'),
-              walking: actionFor('Walk_Formal_Loop'),
-              running: actionFor('Jog_Fwd_Loop'),
+              idle: actionFor(AVATAR_ANIMATION_ASSIGNMENTS.idle),
+              talking: actionFor(AVATAR_ANIMATION_ASSIGNMENTS.talking),
+              walking: actionFor(AVATAR_ANIMATION_ASSIGNMENTS.walking),
+              running: actionFor(AVATAR_ANIMATION_ASSIGNMENTS.running),
             }
             if (Object.values(coreActions).some(action => !action)) {
               console.error(
@@ -481,65 +445,85 @@ export default function AvatarScene() {
               return
             }
 
+            const idleVariationsEnabled = !window.matchMedia(
+              '(prefers-reduced-motion: reduce)',
+            ).matches
             animationController = createAvatarAnimationController({
               mixer,
               actions: coreActions,
-              idleVariationsEnabled: !window.matchMedia(
-                '(prefers-reduced-motion: reduce)',
-              ).matches,
+              idleVariationsEnabled,
             })
             animationControllerRef.current = animationController
-            Promise.all(LONG_IDLE_ANIMATION_IDS.map(loadVrmaPreview))
-              .then((actions) => {
-                if (
-                  !disposed
-                  && animationControllerRef.current === animationController
-                ) {
-                  animationController.setIdleVariations(actions)
-                }
-              })
-              .catch(error => console.error('Long-idle animation load error:', error))
-            loadVrmaPreview('VRMA_02')
-              .then((action) => {
-                if (
-                  !disposed
-                  && animationControllerRef.current === animationController
-                ) {
-                  openingGreetingActionRef.current = action
-                  setOpeningGreetingReady(true)
-                }
-              })
-              .catch((error) => {
-                if (disposed) return
-                console.error('Opening greeting load error:', error)
-                setOpeningGreetingReady(true)
-              })
+            animationController.setIdleVariations(
+              LONG_IDLE_VARIATIONS.map(variation => ({
+                ...variation,
+                steps: variation.steps.map(step => ({
+                  ...step,
+                  action: actionFor(step.name),
+                })),
+              })),
+            )
+            openingGreetingActionRef.current = actionFor(
+              AVATAR_ANIMATION_ASSIGNMENTS.openingGreeting,
+            )
+            boardInteractionActionRef.current = actionFor(
+              AVATAR_ANIMATION_ASSIGNMENTS.interacting,
+            )
+            if (!openingGreetingActionRef.current) {
+              console.error(
+                `Opening greeting load error: ${AVATAR_ANIMATION_ASSIGNMENTS.openingGreeting} was not found.`,
+              )
+            }
+            setOpeningGreetingReady(true)
 
             if (ANIMATION_PREVIEW_ENABLED) {
-              previewActions.set('Idle_Loop', coreActions.idle)
-              previewActions.set('Idle_Talking_Loop', coreActions.talking)
-              previewActions.set('Walk_Formal_Loop', coreActions.walking)
-              previewActions.set('Jog_Fwd_Loop', coreActions.running)
-              previewActions.set('Walk_Loop', actionFor('Walk_Loop'))
+              const availableAnimations = animationGltf.animations
+                .map(animation => animation.name)
+                .filter(Boolean)
+              availableAnimations.forEach((name) => {
+                previewActions.set(name, actionFor(name))
+              })
+              setAnimationPreviewGroups(
+                getAvailableAnimationPreviewGroups(availableAnimations),
+              )
 
               animationPreviewRef.current = {
-                async play(id, { loopVrma = false } = {}) {
+                play(id, { loop = false } = {}) {
                   try {
                     if (id === 'Current_Pose') {
                       animationController.returnToCoreState()
                       setAnimationPreviewStatus('Current core state')
                       return
                     }
-                    setAnimationPreviewStatus(`Loading ${id}…`)
-                    const action = id.startsWith('VRMA_')
-                      ? await loadVrmaPreview(id)
-                      : previewActions.get(id)
+                    const sequence = getAnimationPreviewSequence(id)
+                    if (sequence) {
+                      const steps = sequence.map(step => ({
+                        ...step,
+                        action: previewActions.get(step.name),
+                      }))
+                      if (steps.some(step => !step.action)) {
+                        throw new Error(`${id} is incomplete.`)
+                      }
+                      animationController.playPreviewSequence(steps, {
+                        onComplete: () => {
+                          setAnimationPreviewStatus('Current core state')
+                        },
+                      })
+                      setAnimationPreviewStatus(`Playing ${id}`)
+                      return
+                    }
+                    const action = previewActions.get(id)
 
                     if (!action) {
                       throw new Error(`${id} is not available.`)
                     }
                     animationController.playPreview(action, {
-                      loop: !id.startsWith('VRMA_') || loopVrma,
+                      loop,
+                      onComplete: loop
+                        ? null
+                        : () => {
+                          setAnimationPreviewStatus('Current core state')
+                        },
                     })
                     setAnimationPreviewStatus(`Playing ${id}`)
                   } catch (error) {
@@ -694,6 +678,7 @@ export default function AvatarScene() {
       animationController = null
       animationControllerRef.current = null
       openingGreetingActionRef.current = null
+      boardInteractionActionRef.current = null
       delete window.__ESME_MOVEMENT__
       collisionDebugView?.dispose()
       recommendationBoardInteraction?.dispose()
@@ -711,13 +696,8 @@ export default function AvatarScene() {
 
     if (useElevenlabsRef.current) {
       try {
-        const res = await fetch(`${API_BASE_URL}/tts`, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ text }),
-        })
-        if (!res.ok) throw new Error('ElevenLabs unavailable')
-        const blob     = await res.blob()
+        const blob = await BACKEND_VOICE.synthesize(text)
+        if (!blob) throw new Error('ElevenLabs unavailable')
         const url      = URL.createObjectURL(blob)
         const audio    = new Audio(url)
         const audioCtx = new AudioContext()
@@ -760,14 +740,7 @@ export default function AvatarScene() {
     setLoading(true)
 
     try {
-      const res  = await fetch(`${API_BASE_URL}/chat`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ messages: requestHistory }),
-      })
-      if (!res.ok) throw new Error(`Chat request failed with status ${res.status}`)
-      const data = await res.json()
-      if (!data.response) throw new Error('Chat response did not include a reply')
+      const data = await REQUEST_CHAT_REPLY(requestHistory)
       const reply = data.response
 
       setMessages(prev => [...prev, {
@@ -780,7 +753,7 @@ export default function AvatarScene() {
       console.error('Chat error:', err)
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: "I couldn't connect right now. Please try again.",
+        content: "I couldn't prepare recommendations right now. Please try again.",
       }])
     } finally {
       setLoading(false)
@@ -964,37 +937,43 @@ export default function AvatarScene() {
           <select
             id="animation-preview-select"
             value={previewAnimation}
-            onChange={event => setPreviewAnimation(event.target.value)}
+            onChange={(event) => {
+              const animationName = event.target.value
+              const loop = shouldLoopAnimationPreview(animationName)
+              setPreviewAnimation(animationName)
+              setLoopAnimationPreview(loop)
+              animationPreviewRef.current?.play(animationName, { loop })
+            }}
             disabled={!animationPreviewReady}
           >
             <option value="Current_Pose">Current rest pose</option>
-            {QUATERNIUS_PREVIEW_ANIMATIONS.map(name => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-            {VRMA_PREVIEW_ANIMATIONS.map(({ id, label }) => (
-              <option key={id} value={id}>{label}</option>
+            {animationPreviewGroups.map(group => (
+              <optgroup key={group.label} label={group.label}>
+                {group.names.map(name => (
+                  <option key={name} value={name}>
+                    {getAnimationPreviewLabel(name)}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
           <label className="animation-preview__loop-option">
             <input
               type="checkbox"
-              checked={loopVrmaPreview}
-              onChange={event => setLoopVrmaPreview(event.target.checked)}
-              disabled={!previewAnimation.startsWith('VRMA_')}
+              checked={loopAnimationPreview}
+              onChange={(event) => {
+                const loop = event.target.checked
+                setLoopAnimationPreview(loop)
+                animationPreviewRef.current?.play(previewAnimation, { loop })
+              }}
+              disabled={
+                previewAnimation === 'Current_Pose'
+                || isAnimationPreviewSequence(previewAnimation)
+              }
             />
-            Repeat selected VRMA
+            Repeat selected animation
           </label>
           <div className="animation-preview__actions">
-            <button
-              type="button"
-              onClick={() => animationPreviewRef.current?.play(
-                previewAnimation,
-                { loopVrma: loopVrmaPreview },
-              )}
-              disabled={!animationPreviewReady}
-            >
-              Play
-            </button>
             <button
               type="button"
               onClick={() => animationPreviewRef.current?.reset()}
@@ -1169,7 +1148,13 @@ export default function AvatarScene() {
           className={`button button--secondary ${useElevenLabs && elevenLabsAvailable ? 'button--accent' : ''}`}
           onClick={() => elevenLabsAvailable && setUseElevenLabs(v => !v)}
           disabled={!elevenLabsAvailable}
-          title={!elevenLabsAvailable ? 'Add ELEVENLABS_API_KEY to backend/.env to enable' : useElevenLabs ? 'Switch to browser voice' : 'Switch to ElevenLabs voice'}
+          title={!APP_CONFIG.usesBackend
+            ? 'Browser voice is used in static mode'
+            : !elevenLabsAvailable
+              ? 'ElevenLabs is unavailable from the backend'
+              : useElevenLabs
+                ? 'Switch to browser voice'
+                : 'Switch to ElevenLabs voice'}
         >
           {useElevenLabs && elevenLabsAvailable ? 'ElevenLabs voice' : 'Browser voice'}
         </button>
@@ -1217,6 +1202,12 @@ export default function AvatarScene() {
             WASD or arrow keys to move · Hold Shift to run · Drag to rotate · Scroll to zoom
           </p>
         </div>
+
+        <p className="control-dock__fallback-note" role="note">
+          {APP_CONFIG.usesBackend
+            ? 'Backend mode: Recommendations and optional ElevenLabs speech use FastAPI. Browser speech remains available.'
+            : 'Static demo: Recommendations use the built-in 18-song catalog and voice stays in the browser.'}
+        </p>
       </section>
     </main>
   )

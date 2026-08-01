@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: resonance-room-web
+    runtime: static
+    rootDir: web
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: VITE_APP_MODE
+        value: static
