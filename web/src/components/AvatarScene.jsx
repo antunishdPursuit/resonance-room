@@ -79,7 +79,6 @@ const ANIMATION_PREVIEW_ENABLED = import.meta.env.DEV
 export default function AvatarScene() {
   const canvasRef  = useRef(null)
   const vrmRef     = useRef(null)
-  const mixerRef   = useRef(null)
   const speakRef        = useRef(null)
   const inputRef        = useRef(null)
   const speechBubbleRef = useRef(null)
@@ -419,7 +418,6 @@ export default function AvatarScene() {
             if (disposed) return
 
             const mixer = new THREE.AnimationMixer(vrm.scene)
-            mixerRef.current = mixer
             const actionFor = (name) => {
               const sourceClip = animationGltf.animations.find(
                 animation => animation.name === name,
