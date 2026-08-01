@@ -57,8 +57,14 @@ import {
   toggleSongSelection,
 } from '../ui/songSelection.js'
 import { calculateSpeechBubblePosition } from '../ui/speechBubblePosition.js'
-import { createFallbackChatReply } from '../recommendations/fallbackRecommender.js'
+import { createAppConfig } from '../config/appConfig.js'
+import { createChatClient } from '../chat/chatClient.js'
 
+const APP_CONFIG = createAppConfig({
+  mode: import.meta.env.VITE_APP_MODE,
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL,
+})
+const REQUEST_CHAT_REPLY = createChatClient({ appConfig: APP_CONFIG })
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8001').replace(/\/$/, '')
 const MAX_CHAT_MESSAGES = 20
 const WELCOME_PROMPT = 'Hi, I\u2019m Esme. What kind of songs do you like? You can name a genre, artist, mood, or activity.'
@@ -730,11 +736,12 @@ export default function AvatarScene() {
 
     const userMsg = { role: 'user', content: text }
     const history = [...messagesRef.current, userMsg]
+    const requestHistory = history.slice(-MAX_CHAT_MESSAGES)
     setMessages(history)
     setLoading(true)
 
     try {
-      const data = createFallbackChatReply(text)
+      const data = await REQUEST_CHAT_REPLY(requestHistory)
       const reply = data.response
 
       setMessages(prev => [...prev, {
@@ -744,7 +751,7 @@ export default function AvatarScene() {
       }])
       speak(reply)
     } catch (err) {
-      console.error('Recommendation error:', err)
+      console.error('Chat error:', err)
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: "I couldn't prepare recommendations right now. Please try again.",
@@ -1192,7 +1199,9 @@ export default function AvatarScene() {
         </div>
 
         <p className="control-dock__fallback-note" role="note">
-          Static demo: Recommendations use the built-in 18-song catalog. Browser speech remains available if the voice service is unavailable.
+          {APP_CONFIG.usesBackend
+            ? 'Backend mode: Recommendations and optional ElevenLabs speech use FastAPI. Browser speech remains available.'
+            : 'Static demo: Recommendations use the built-in 18-song catalog. Browser speech remains available if the voice service is unavailable.'}
         </p>
       </section>
     </main>
