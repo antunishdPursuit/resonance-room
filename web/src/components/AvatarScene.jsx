@@ -162,7 +162,7 @@ export default function AvatarScene() {
   }, [])
 
   useEffect(() => {
-    if (pickedSongs.length === 5 && !profileBuilt) {
+    if (APP_CONFIG.usesBackend && pickedSongs.length === 5 && !profileBuilt) {
       setProfileBuilt(true)
       const songList = pickedSongs.map(s => `"${s.title}" by ${s.artist}`).join(', ')
       const autoMsg  = `I just picked 5 songs I love: ${songList}. Based on these picks, what can you tell about my music taste? Please recommend new songs I haven't heard — do not suggest any of the songs I just listed.`
