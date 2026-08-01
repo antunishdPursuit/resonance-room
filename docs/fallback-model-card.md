@@ -7,17 +7,17 @@ Resonance Room Local Recommender (originally What You Are)
 
 ## 2. Intended Use  
 
-This deterministic fallback recommends songs from a small bundled catalog when the external Anthropic or Last.fm path is unavailable. It assumes that a listener's current preferences can be approximated through genre, mood, energy, valence, tempo, danceability, and acousticness targets.
+This deterministic fallback recommends songs from a small bundled catalog. It is the default recommendation path in the public frontend and the backup path in optional FastAPI mode when Anthropic or Last.fm is unavailable. It assumes that a listener's current preferences can be approximated through genre, mood, energy, valence, tempo, danceability, and acousticness targets.
 
 It is suitable for product fallback behavior, transparent demonstrations, and deterministic testing. It is not a production-scale personalization model.
 ## 3. How the Model Works  
 
 Every song in the catalog gets a score out of 9 points based on how well it matches what the user told us they like. The system looks at seven things about each song: its genre, its mood, how energetic it sounds, how acoustic or electronic it feels, how happy or sad the tone is, its tempo in beats per minute, and how danceable it is. For each of those, it checks how close the song is to the user's preferred value. 
-Genre and mood work differently: they're worth fixed bonus points (2 points for a genre match, 1 for mood) because those labels reflect a whole style and not just a number. Once all seven scores are added up, every song in the catalog has a total, they're sorted highest to lowest, and a diversity check removes duplicate artists before the requested number is returned. The classroom product requests six recommendations; the standalone evaluation defaults to five. Each feature has a different weight based on how much it actually matters to the listening experience and builds a plain-English explanation for every recommendation so you can see exactly why each song was chosen.
+Genre and mood work differently: they're worth fixed bonus points (2 points for a genre match, 1 for mood) because those labels reflect a whole style and not just a number. Once all seven scores are added up, every song in the catalog has a total, they're sorted highest to lowest, and a diversity check removes duplicate artists before the requested number is returned. The classroom product requests six recommendations; the standalone evaluation defaults to five. The Python evaluator can build a plain-English explanation from the strongest scoring factors. The current static song rows return title and artist without those per-song explanations.
 
 ## 4. Data  
 
-The catalog contains 18 songs stored in `data/songs.csv`.
+The catalog contains 18 synthetic songs. Static mode stores them in `web/src/recommendations/songCatalog.js`. The Python backend and evaluator store the same records in `data/songs.csv`.
 
 **Genres represented:** pop, lofi, rock, ambient, jazz, synthwave, indie pop, r&b, electronic, folk, hip-hop, metal, classical, latin, soul
 
@@ -31,7 +31,7 @@ The catalog contains 18 songs stored in `data/songs.csv`.
 
 ## 5. Strengths  
 
-The system works best for listeners with a clear, consistent taste. For these users, multiple features point in the same direction at once, so the top results score very high and feel obviously right. The scoring also does a good job separating genres that are acoustically very different: lofi and metal will almost never share a top-5 list because their energy, acousticness, and tempo values are worlds apart. The genre and mood bonuses add a useful anchor so that similar songs rise above technically close but tonally wrong ones. Finally, the plain-English explanation attached to every recommendation makes the system transparent: you can always see exactly why a song was chosen, which is something most real recommenders don't offer.
+The system works best for listeners with a clear, consistent taste. For these users, multiple features point in the same direction at once, so the top results score very high and feel obviously right. The scoring also does a good job separating genres that are acoustically very different: lofi and metal will almost never share a top-5 list because their energy, acousticness, and tempo values are worlds apart. The genre and mood bonuses add a useful anchor so that similar songs rise above technically close but tonally wrong ones. The Python evaluator's explanations also make its rankings easier to inspect.
 
 ## 6. Limitations and Bias 
 
