@@ -1,9 +1,12 @@
 # Fallback Recommender Evaluation
 
-Six deterministic profiles exercise the Python recommender and record the top
-five results for each profile. The static frontend mirrors the catalog and
-scoring behavior but has separate JavaScript determinism and parity tests. Run
-the Python evaluation with:
+Six deterministic profiles exercise the Python recommender. The evaluator
+records five results per profile so the rankings remain easy to compare; the
+classroom product requests six recommendations. The static frontend mirrors
+the catalog and scoring behavior but has separate JavaScript determinism and
+parity tests.
+
+Run the Python evaluation with:
 
 ```bash
 python -m src.main

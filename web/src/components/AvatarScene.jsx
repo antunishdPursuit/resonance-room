@@ -396,7 +396,7 @@ export default function AvatarScene() {
 
         const vrm = gltf.userData.vrm
         disableUnwantedSpringBones(vrm)
-        VRMUtils.removeUnnecessaryJoints(vrm.scene)
+        VRMUtils.combineSkeletons(vrm.scene)
         positionOpeningAvatar(vrm.scene)
         scene.add(vrm.scene)
         vrmRef.current = vrm
@@ -556,7 +556,8 @@ export default function AvatarScene() {
     const blinkState = createBlinkState()
 
     // Render loop
-    const clock = new THREE.Clock()
+    const timer = new THREE.Timer()
+    timer.connect(document)
     const speechAnchorWorld = new THREE.Vector3()
     const speechAnchorCamera = new THREE.Vector3()
     let animId
@@ -601,9 +602,10 @@ export default function AvatarScene() {
       bubble.dataset.visible = String(position.visible)
     }
 
-    function animate() {
+    function animate(timestamp) {
       animId = requestAnimationFrame(animate)
-      const delta = clock.getDelta()
+      timer.update(timestamp)
+      const delta = timer.getDelta()
       const vrm = vrmRef.current
 
       const movement = movementController?.update(delta) ?? {
@@ -661,6 +663,7 @@ export default function AvatarScene() {
     return () => {
       disposed = true
       cancelAnimationFrame(animId)
+      timer.dispose()
       window.removeEventListener('resize', onResize)
       window.speechSynthesis.cancel()
       classroomInspector?.dispose()
@@ -754,6 +757,7 @@ export default function AvatarScene() {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: "I couldn't prepare recommendations right now. Please try again.",
+        kind: 'error',
       }])
     } finally {
       setLoading(false)
@@ -861,8 +865,8 @@ export default function AvatarScene() {
       </div>
       <div
         className="visually-hidden"
-        role="status"
-        aria-live="polite"
+        role={latestEsmeMessage?.kind === 'error' ? 'alert' : 'status'}
+        aria-live={latestEsmeMessage?.kind === 'error' ? 'assertive' : 'polite'}
         aria-atomic="true"
       >
         {latestEsmeMessage?.content ?? WELCOME_PROMPT}
@@ -889,12 +893,12 @@ export default function AvatarScene() {
             key={i}
             className={`transcript-entry ${
               m.role === 'user' ? 'transcript-entry--user' : 'transcript-entry--assistant'
-            }`}
+            } ${m.kind === 'error' ? 'transcript-entry--error' : ''}`}
           >
             <div
               className={`transcript-bubble ${
                 m.role === 'user' ? 'transcript-bubble--user' : 'transcript-bubble--assistant'
-              }`}
+              } ${m.kind === 'error' ? 'transcript-bubble--error' : ''}`}
             >
               {m.content}
             </div>
@@ -1127,6 +1131,7 @@ export default function AvatarScene() {
       {chatLimitReached && (
         <div
           className="chat-limit-notice"
+          data-tone="warning"
           role="status"
           aria-live="polite"
         >
@@ -1203,7 +1208,7 @@ export default function AvatarScene() {
           </p>
         </div>
 
-        <p className="control-dock__fallback-note" role="note">
+        <p className="control-dock__fallback-note" data-tone="info" role="note">
           {APP_CONFIG.usesBackend
             ? 'Backend mode: Recommendations and optional ElevenLabs speech use FastAPI. Browser speech remains available.'
             : 'Static demo: Recommendations use the built-in 18-song catalog and voice stays in the browser.'}

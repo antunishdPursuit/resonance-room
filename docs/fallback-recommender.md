@@ -15,7 +15,7 @@ The public song rows do not display the Python evaluator's per-song scores or ex
 
 ---
 
-## What each Song knows about itself
+## What each song knows about itself
 
 Every song in the catalog carries two types of information:
 
@@ -24,7 +24,7 @@ Every song in the catalog carries two types of information:
 
 ---
 
-## What the User Profile stores
+## What the user profile stores
 
 The user profile is a snapshot of your taste:
 
@@ -34,7 +34,7 @@ The user profile is a snapshot of your taste:
 
 ---
 
-## Algorithm Recipe
+## Algorithm recipe
 
 Every song in the catalog is scored against the user profile using a point system. Points are added up — the highest total wins. The maximum possible score is **9.0 points**.
 
@@ -56,9 +56,9 @@ Every song in the catalog is scored against the user profile using a point syste
 
 ## How the final recommendations are chosen
 
-1. Every song in the catalog gets a score
-2. Songs are sorted from highest to lowest score
-3. A diversity check runs: if two top songs are by the same artist, the lower-ranked one is skipped so the list feels more varied
+1. Every song in the catalog gets a score.
+2. Songs are sorted from highest to lowest score.
+3. A diversity check runs. If two top songs are by the same artist, the lower-ranked one is skipped so the list feels more varied.
 4. The requested number of songs after that check become the recommendations.
    Resonance Room requests six for the classroom board; the standalone
    evaluation uses five unless another value is supplied.

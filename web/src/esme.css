@@ -31,6 +31,9 @@
   --esme-muted: #d8b9ca;
   --esme-border: rgba(255, 168, 210, 0.38);
   --esme-focus: #fff0a8;
+  --esme-info: #c9c2ff;
+  --esme-warning: #ffd08a;
+  --esme-error: #ff9aaa;
   --esme-shadow: 0 14px 36px rgba(8, 3, 8, 0.34);
   --esme-transition: 160ms ease;
 }
@@ -165,7 +168,7 @@ summary:focus-visible {
   flex-direction: column;
   gap: 8px;
   width: min(240px, calc(100vw - 32px)) !important;
-  max-height: min(70vh, 560px);
+  max-height: min(56vh, 394px);
   overflow-y: auto;
 }
 
@@ -314,14 +317,14 @@ summary:focus-visible {
 }
 
 .transcript {
-  top: 92px !important;
+  top: 16px !important;
   right: 16px !important;
   z-index: 18;
   display: flex;
   flex-direction: column;
   gap: 8px;
   width: min(340px, calc(100vw - 32px)) !important;
-  max-height: min(56vh, 560px) !important;
+  max-height: min(56vh, 394px) !important;
   padding: 12px;
   border-radius: 16px;
   overflow-y: auto;
@@ -372,6 +375,12 @@ summary:focus-visible {
   color: var(--esme-text);
   background: rgba(255, 248, 252, 0.12);
   border-color: rgba(255, 168, 210, 0.2);
+}
+
+.transcript-bubble--error {
+  color: var(--esme-error);
+  background: rgba(255, 75, 112, 0.12);
+  border-color: rgba(255, 154, 170, 0.5);
 }
 
 .transcript-bubble--user {
@@ -433,6 +442,12 @@ summary:focus-visible {
   transform: translateX(-50%);
 }
 
+.chat-limit-notice[data-tone="warning"] {
+  color: var(--esme-warning);
+  border-color: rgba(255, 208, 138, 0.5) !important;
+  background: rgba(42, 26, 20, 0.92) !important;
+}
+
 .control-dock {
   position: absolute;
   bottom: 16px !important;
@@ -473,7 +488,7 @@ summary:focus-visible {
   order: 4;
   flex: 1 0 100%;
   margin: 0;
-  color: var(--esme-muted);
+  color: var(--esme-info);
   font-size: 0.68rem;
   line-height: 1.4;
   text-align: center;
@@ -765,7 +780,7 @@ summary:focus-visible {
   }
 
   .transcript {
-    top: 84px !important;
+    top: 10px !important;
     right: 10px !important;
   }
 
@@ -823,6 +838,12 @@ summary:focus-visible {
   .control-dock__help {
     max-width: 210px;
     font-size: 0.65rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .transcript {
+    top: 84px !important;
   }
 }
 
