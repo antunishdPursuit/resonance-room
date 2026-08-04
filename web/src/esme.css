@@ -317,7 +317,7 @@ summary:focus-visible {
 }
 
 .transcript {
-  top: 92px !important;
+  top: 16px !important;
   right: 16px !important;
   z-index: 18;
   display: flex;
@@ -780,7 +780,7 @@ summary:focus-visible {
   }
 
   .transcript {
-    top: 84px !important;
+    top: 10px !important;
     right: 10px !important;
   }
 
@@ -838,6 +838,12 @@ summary:focus-visible {
   .control-dock__help {
     max-width: 210px;
     font-size: 0.65rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .transcript {
+    top: 84px !important;
   }
 }
 
