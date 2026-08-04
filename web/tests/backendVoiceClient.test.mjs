@@ -19,7 +19,8 @@ test('never fetches voice endpoints in static mode', async () => {
   assert.equal(fetchCalls, 0)
 })
 
-test('checks ElevenLabs availability through FastAPI in backend mode', async () => {
+test('checks and requests ElevenLabs audio through FastAPI', async () => {
+  const audioBlob = { type: 'audio/mpeg' }
   const requests = []
   const client = createBackendVoiceClient({
     appConfig: createAppConfig({
@@ -28,29 +29,14 @@ test('checks ElevenLabs availability through FastAPI in backend mode', async () 
     }),
     fetchImpl: async (url, options) => {
       requests.push({ url, options })
-      return {
-        ok: true,
-        async json() {
-          return { elevenlabs: true }
-        },
+      if (url.endsWith('/tts/available')) {
+        return {
+          ok: true,
+          async json() {
+            return { elevenlabs: true }
+          },
+        }
       }
-    },
-  })
-
-  assert.equal(await client.checkAvailability(), true)
-  assert.deepEqual(requests, [{
-    url: 'http://127.0.0.1:8001/tts/available',
-    options: undefined,
-  }])
-})
-
-test('returns synthesized audio from the backend voice endpoint', async () => {
-  const audioBlob = { type: 'audio/mpeg' }
-  const requests = []
-  const client = createBackendVoiceClient({
-    appConfig: createAppConfig({ mode: 'backend' }),
-    fetchImpl: async (url, options) => {
-      requests.push({ url, options })
       return {
         ok: true,
         async blob() {
@@ -60,34 +46,32 @@ test('returns synthesized audio from the backend voice endpoint', async () => {
     },
   })
 
+  assert.equal(await client.checkAvailability(), true)
   assert.equal(await client.synthesize('Hello Esme'), audioBlob)
-  assert.equal(requests[0].url, 'http://localhost:8001/tts')
-  assert.equal(requests[0].options.method, 'POST')
+  assert.deepEqual(requests[0], {
+    url: 'http://127.0.0.1:8001/tts/available',
+    options: undefined,
+  })
+  assert.equal(requests[1].url, 'http://127.0.0.1:8001/tts')
+  assert.equal(requests[1].options.method, 'POST')
   assert.deepEqual(
-    JSON.parse(requests[0].options.body),
+    JSON.parse(requests[1].options.body),
     { text: 'Hello Esme' },
   )
 })
 
-test('returns false or null when backend voice requests fail', async () => {
-  const client = createBackendVoiceClient({
-    appConfig: createAppConfig({ mode: 'backend' }),
-    fetchImpl: async () => ({ ok: false }),
-  })
-
-  assert.equal(await client.checkAvailability(), false)
-  assert.equal(await client.synthesize('Hello'), null)
-})
-
-test('does not request audio for blank text', async () => {
+test('handles unavailable or blank backend voice requests safely', async () => {
   let fetchCalls = 0
   const client = createBackendVoiceClient({
     appConfig: createAppConfig({ mode: 'backend' }),
     fetchImpl: async () => {
       fetchCalls += 1
+      return { ok: false }
     },
   })
 
+  assert.equal(await client.checkAvailability(), false)
+  assert.equal(await client.synthesize('Hello'), null)
   assert.equal(await client.synthesize('   '), null)
-  assert.equal(fetchCalls, 0)
+  assert.equal(fetchCalls, 2)
 })

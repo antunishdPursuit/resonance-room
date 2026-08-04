@@ -18,40 +18,47 @@ test('returns six deterministic recommendations from the frontend catalog', () =
     first.slice(0, 2).map(song => song.title),
     ['Gym Hero', 'Fast Forward'],
   )
-})
-
-test('matches the chill profile for calm lofi requests', () => {
-  const reply = createFallbackChatReply('I need calm lofi music to relax')
-
-  assert.match(reply.response, /chill study vibes/)
-  assert.deepEqual(
-    reply.recommendations.slice(0, 2).map(song => song.title),
-    ['Library Rain', 'Midnight Coding'],
+  assert.equal(
+    new Set(first.map(song => song.artist)).size,
+    first.length,
   )
 })
 
-test('uses the average profile when no fallback keyword matches', () => {
-  const reply = createFallbackChatReply('Surprise me')
+test('matches the approved guided recommendation profiles', () => {
+  const chill = createFallbackChatReply(
+    'I need calm lofi music to relax',
+  )
+  const surprise = createFallbackChatReply('Surprise me')
+  const focus = createFallbackChatReply('focus')
 
-  assert.match(reply.response, /Here are some tracks I think you'll enjoy!/)
-  assert.equal(reply.recommendations[0].title, 'Coffee Shop Stories')
+  assert.match(chill.response, /chill study vibes/)
+  assert.deepEqual(
+    chill.recommendations.slice(0, 2).map(song => song.title),
+    ['Library Rain', 'Midnight Coding'],
+  )
+  assert.match(
+    surprise.response,
+    /Here are some tracks I think you'll enjoy!/,
+  )
+  assert.equal(
+    surprise.recommendations[0].title,
+    'Coffee Shop Stories',
+  )
+  assert.match(focus.response, /focus/)
+  assert.deepEqual(
+    focus.recommendations.slice(0, 2).map(song => song.title),
+    ['Deep Work', 'Notebook Daydream'],
+  )
 })
 
-test('offers six clear guided vibe choices', () => {
+test('preserves the guided choices and static catalog boundary', () => {
   assert.deepEqual(
     GUIDED_VIBES.map(vibe => vibe.label),
     ['Chill', 'Focus', 'Energy', 'Feel-good', 'Moody', 'Surprise me'],
   )
-})
-
-test('gives focus its own recommendation profile', () => {
-  const reply = createFallbackChatReply('focus')
-
-  assert.match(reply.response, /focus/)
-  assert.deepEqual(
-    reply.recommendations.slice(0, 2).map(song => song.title),
-    ['Deep Work', 'Notebook Daydream'],
-  )
+  assert.equal(SONG_CATALOG.length, 36)
+  assert.equal(SONG_CATALOG[0].title, 'Sunrise City')
+  assert.equal(SONG_CATALOG.at(-1).title, 'Last Train Home')
 })
 
 test('avoids songs from the previous set while alternatives remain', () => {
@@ -79,16 +86,4 @@ test('acknowledges the session taste profile in later replies', () => {
   })
 
   assert.match(reply.response, /likes lean toward lofi/)
-})
-
-test('keeps artist diversity when the catalog can fill all six slots', () => {
-  const artists = recommendFallbackSongs('pop').map(song => song.artist)
-
-  assert.equal(new Set(artists).size, artists.length)
-})
-
-test('preserves all 36 stored songs as the static frontend source', () => {
-  assert.equal(SONG_CATALOG.length, 36)
-  assert.equal(SONG_CATALOG[0].title, 'Sunrise City')
-  assert.equal(SONG_CATALOG.at(-1).title, 'Last Train Home')
 })

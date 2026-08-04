@@ -17,7 +17,7 @@ test('uses static mode when VITE_APP_MODE is missing', () => {
   })
 })
 
-test('normalizes an explicit backend configuration', () => {
+test('normalizes explicit and default backend configuration', () => {
   assert.deepEqual(
     createAppConfig({
       mode: ' BACKEND ',
@@ -29,23 +29,17 @@ test('normalizes an explicit backend configuration', () => {
       apiBaseUrl: 'https://api.example.com',
     },
   )
-})
-
-test('uses the local FastAPI URL when backend mode has no URL', () => {
   assert.equal(
     createAppConfig({ mode: APP_MODE_BACKEND }).apiBaseUrl,
     'http://localhost:8001',
   )
 })
 
-test('rejects unsupported application modes', () => {
+test('rejects invalid application configuration', () => {
   assert.throws(
     () => createAppConfig({ mode: 'hybrid' }),
     /Unsupported VITE_APP_MODE/,
   )
-})
-
-test('rejects backend URLs that do not use http or https', () => {
   assert.throws(
     () => createAppConfig({
       mode: APP_MODE_BACKEND,

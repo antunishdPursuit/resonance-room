@@ -11,8 +11,14 @@ const LIKED_SONGS = [
   { genre: 'jazz', mood: 'relaxed', energy: 0.37, danceability: 0.54, acousticness: 0.89 },
 ]
 
-test('waits until five liked songs are available', () => {
+test('waits for five liked songs with usable music attributes', () => {
   assert.equal(deriveTasteProfile(LIKED_SONGS.slice(0, 4)), null)
+  const songs = Array.from({ length: 5 }, (_, index) => ({
+    title: `Song ${index + 1}`,
+    artist: 'Unknown',
+  }))
+
+  assert.equal(deriveTasteProfile(songs), null)
 })
 
 test('derives a deterministic profile from five liked songs', () => {
@@ -23,13 +29,4 @@ test('derives a deterministic profile from five liked songs', () => {
     style: 'acoustic',
     summary: 'Your picks lean toward lofi sounds, focused moods, calm energy, an acoustic feel.',
   })
-})
-
-test('does not invent a profile when provider songs lack music attributes', () => {
-  const songs = Array.from({ length: 5 }, (_, index) => ({
-    title: `Song ${index + 1}`,
-    artist: 'Unknown',
-  }))
-
-  assert.equal(deriveTasteProfile(songs), null)
 })
