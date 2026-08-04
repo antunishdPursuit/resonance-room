@@ -19,9 +19,9 @@ flowchart TD
     end
 
     subgraph STATIC ["Static mode - public default"]
-        JsMatcher["Browser keyword matcher"]
+        JsMatcher["Guided vibe matcher"]
         JsScorer["Deterministic JavaScript scorer"]
-        JsCatalog[("Bundled 18-song catalog")]
+        JsCatalog[("Bundled 36-song catalog")]
     end
 
     subgraph BACKEND ["Optional FastAPI mode"]
@@ -70,12 +70,12 @@ flowchart TD
 
 | Behavior | Static mode | Backend mode |
 | --- | --- | --- |
-| Chat source | Browser keyword matching and deterministic scoring | FastAPI `/chat` |
-| Catalog | Bundled JavaScript copy of the 18 stored records | Last.fm when configured, otherwise `data/songs.csv` |
+| Chat source | Six guided vibes and deterministic scoring | FastAPI `/chat` |
+| Catalog | 36 bundled JavaScript records | Last.fm when configured, otherwise the 18 records in `data/songs.csv` |
 | Network requirement | None for chat | Required to reach FastAPI |
 | Default speech | Browser speech | Browser speech or ElevenLabs |
 | ElevenLabs | Never requested | FastAPI `/tts` when configured |
-| Five-liked-song profile | Disabled | Sends one automatic profile request |
+| Five-liked-song profile | Creates one session-only summary from catalog attributes | Sends one automatic profile request |
 | Public Render release | Yes | No |
 
 Static mode never probes `/tts/available`, sends `/chat`, or requests `/tts`.
@@ -91,7 +91,7 @@ Static mode never probes `/tts/available`, sends `/chat`, or requests `/tts`.
 | Classroom | Handles rendering, collisions, camera movement, and occlusion fading | Frontend |
 | Static chat client | Routes public requests to the browser fallback without fetching | Frontend |
 | Backend chat client | Sends bounded `{role, content}` history to FastAPI | Frontend |
-| Browser fallback | Matches keywords and scores the stored catalog | Frontend |
+| Browser fallback | Matches guided vibes, avoids recent repeats, and scores the stored catalog | Frontend |
 | FastAPI `/chat` | Uses providers when configured and Python fallback otherwise | Backend |
 | FastAPI `/tts` | Proxies text to ElevenLabs and returns MP3 audio | Backend |
 | FastAPI `/health` | Reports optional backend availability | Backend |
@@ -112,9 +112,10 @@ The transcript remains the keyboard-accessible selection method.
 ```text
 User message
   -> frontend chat client
-  -> keyword profile
-  -> deterministic score over the bundled catalog
-  -> six diverse songs and a stored response template
+  -> guided vibe profile
+  -> deterministic score over the 36-song bundled catalog
+  -> six diverse songs that avoid recent results when alternatives remain
+  -> rotating response template and optional session taste note
   -> board, transcript, and optional browser speech
 ```
 

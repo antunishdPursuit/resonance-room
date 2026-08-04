@@ -31,6 +31,53 @@ test('uses the local recommender without fetching in static mode', async () => {
   assert.equal(reply.recommendations[0].title, 'Gym Hero')
 })
 
+test('passes earlier static recommendations to the fallback as exclusions', async () => {
+  const calls = []
+  const requestReply = createChatClient({
+    appConfig: createAppConfig(),
+    fallbackReply: async (message, options) => {
+      calls.push({ message, options })
+      return { response: 'Try these.', recommendations: [] }
+    },
+  })
+  const priorSong = { title: 'Earlier Song', artist: 'Earlier Artist' }
+
+  await requestReply([
+    { role: 'assistant', content: 'Try this.', songs: [priorSong] },
+    { role: 'user', content: 'chill' },
+  ])
+
+  assert.deepEqual(calls, [{
+    message: 'chill',
+    options: {
+      excludeSongs: [priorSong],
+      repeatCount: 1,
+      tasteProfile: null,
+    },
+  }])
+})
+
+test('passes repeat and taste context to the static fallback', async () => {
+  const calls = []
+  const requestReply = createChatClient({
+    appConfig: createAppConfig(),
+    fallbackReply: async (message, options) => {
+      calls.push({ message, options })
+      return { response: 'Try these.', recommendations: [] }
+    },
+  })
+  const tasteProfile = { genre: 'lofi' }
+
+  await requestReply([
+    { role: 'user', content: 'Chill' },
+    { role: 'assistant', content: 'Try these.', songs: [] },
+    { role: 'user', content: 'Chill' },
+  ], { tasteProfile })
+
+  assert.equal(calls[0].options.repeatCount, 2)
+  assert.equal(calls[0].options.tasteProfile, tasteProfile)
+})
+
 test('sends the bounded conversation to FastAPI in backend mode', async () => {
   const requests = []
   const requestReply = createChatClient({

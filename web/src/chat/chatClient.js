@@ -30,6 +30,22 @@ function latestUserMessage(messages) {
   return message.content
 }
 
+function previouslyRecommendedSongs(messages) {
+  return messages.flatMap(message => (
+    message?.role === 'assistant' && Array.isArray(message.songs)
+      ? message.songs
+      : []
+  ))
+}
+
+function matchingRequestCount(messages, userText) {
+  const normalizedText = userText.trim().toLowerCase()
+  return messages.filter(message => (
+    message?.role === 'user'
+    && message.content?.trim().toLowerCase() === normalizedText
+  )).length
+}
+
 function normalizeBackendReply(data) {
   if (!data || typeof data.response !== 'string' || !data.response.trim()) {
     throw new Error('Chat response did not include a reply.')
@@ -52,12 +68,16 @@ export function createChatClient({
     throw new Error('Chat client requires an application configuration.')
   }
 
-  return async function requestChatReply(messages) {
+  return async function requestChatReply(messages, context = {}) {
     const requestMessages = sanitizeMessages(messages)
     const userText = latestUserMessage(requestMessages)
 
     if (!appConfig.usesBackend) {
-      return fallbackReply(userText)
+      return fallbackReply(userText, {
+        excludeSongs: previouslyRecommendedSongs(messages),
+        repeatCount: matchingRequestCount(requestMessages, userText),
+        tasteProfile: context.tasteProfile ?? null,
+      })
     }
 
     const response = await fetchImpl(`${appConfig.apiBaseUrl}/chat`, {

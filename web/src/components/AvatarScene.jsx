@@ -59,6 +59,8 @@ import {
 import { calculateSpeechBubblePosition } from '../ui/speechBubblePosition.js'
 import { createAppConfig } from '../config/appConfig.js'
 import { createChatClient } from '../chat/chatClient.js'
+import { GUIDED_VIBES } from '../recommendations/fallbackRecommender.js'
+import { deriveTasteProfile } from '../recommendations/tasteProfile.js'
 import { createBackendVoiceClient } from '../voice/backendVoiceClient.js'
 
 const APP_CONFIG = createAppConfig({
@@ -68,7 +70,9 @@ const APP_CONFIG = createAppConfig({
 const REQUEST_CHAT_REPLY = createChatClient({ appConfig: APP_CONFIG })
 const BACKEND_VOICE = createBackendVoiceClient({ appConfig: APP_CONFIG })
 const MAX_CHAT_MESSAGES = 20
-const WELCOME_PROMPT = 'Hi, I\u2019m Esme. What kind of songs do you like? You can name a genre, artist, mood, or activity.'
+const WELCOME_PROMPT = APP_CONFIG.usesBackend
+  ? 'Hi, I\u2019m Esme. What kind of songs do you like? You can name a genre, artist, mood, or activity.'
+  : 'Hi, I\u2019m Esme. Pick a vibe below and I\u2019ll find six songs for you.'
 const PAGE_PARAMETERS = new URLSearchParams(window.location.search)
 const CLASSROOM_INSPECTION_ENABLED = import.meta.env.DEV
   && PAGE_PARAMETERS.get('inspectClassroom') === '1'
@@ -161,13 +165,27 @@ export default function AvatarScene() {
   }, [])
 
   useEffect(() => {
-    if (APP_CONFIG.usesBackend && pickedSongs.length === 5 && !profileBuilt) {
+    if (pickedSongs.length < 5 || profileBuilt) return
+
+    if (APP_CONFIG.usesBackend) {
       setProfileBuilt(true)
       const songList = pickedSongs.map(s => `"${s.title}" by ${s.artist}`).join(', ')
-      const autoMsg  = `I just picked 5 songs I love: ${songList}. Based on these picks, what can you tell about my music taste? Please recommend new songs I haven't heard — do not suggest any of the songs I just listed.`
+      const autoMsg = `I just picked 5 songs I love: ${songList}. Based on these picks, what can you tell about my music taste? Please recommend new songs I haven't heard — do not suggest any of the songs I just listed.`
       sendMessage(autoMsg)
+      return
     }
-  }, [pickedSongs])
+
+    const tasteProfile = deriveTasteProfile(pickedSongs)
+    if (!tasteProfile) return
+
+    setProfileBuilt(true)
+    setMessages(previous => [...previous, {
+      role: 'assistant',
+      content: `${tasteProfile.summary} I’ll keep that in mind for your next picks.`,
+      kind: 'profile',
+    }])
+    speak(tasteProfile.summary)
+  }, [pickedSongs, profileBuilt])
 
   useEffect(() => {
     if (!shouldStartOpeningGreeting({
@@ -743,7 +761,9 @@ export default function AvatarScene() {
     setLoading(true)
 
     try {
-      const data = await REQUEST_CHAT_REPLY(requestHistory)
+      const data = await REQUEST_CHAT_REPLY(requestHistory, {
+        tasteProfile: deriveTasteProfile(pickedSongsRef.current),
+      })
       const reply = data.response
 
       setMessages(prev => [...prev, {
@@ -1184,23 +1204,47 @@ export default function AvatarScene() {
           Reset camera
         </button>
 
-        <input
-          className="composer-input"
-          ref={inputRef}
-          onKeyDown={handleKeyDown}
-          placeholder={chatLimitReached ? 'Start a new chat to continue' : loading ? 'Esme is thinking...' : 'Say something to Esme...'}
-          disabled={loading || chatLimitReached}
-        />
+        {APP_CONFIG.usesBackend ? (
+          <input
+            className="composer-input"
+            ref={inputRef}
+            onKeyDown={handleKeyDown}
+            placeholder={chatLimitReached ? 'Start a new chat to continue' : loading ? 'Esme is thinking...' : 'Say something to Esme...'}
+            disabled={loading || chatLimitReached}
+          />
+        ) : (
+          <div className="vibe-picker" role="group" aria-label="Choose a music vibe">
+            <span className="vibe-picker__label">Choose a vibe</span>
+            {chatLimitReached ? (
+              <button className="button button--primary" onClick={startNewChat}>
+                Start new chat
+              </button>
+            ) : (
+              GUIDED_VIBES.map(vibe => (
+                <button
+                  key={vibe.id}
+                  className="button button--secondary button--vibe"
+                  disabled={loading}
+                  onClick={() => sendMessage(vibe.label)}
+                >
+                  {vibe.label}
+                </button>
+              ))
+            )}
+          </div>
+        )}
 
         <div className="control-dock__actions">
-          {chatLimitReached ? (
-            <button className="button button--primary" onClick={startNewChat}>
-              Start new chat
-            </button>
-          ) : (
-            <button className="button button--primary" onClick={handleSend} disabled={loading}>
-              {loading ? '...' : 'Send'}
-            </button>
+          {APP_CONFIG.usesBackend && (
+            chatLimitReached ? (
+              <button className="button button--primary" onClick={startNewChat}>
+                Start new chat
+              </button>
+            ) : (
+              <button className="button button--primary" onClick={handleSend} disabled={loading}>
+                {loading ? '...' : 'Send'}
+              </button>
+            )
           )}
 
           <p className="control-dock__help">
@@ -1211,7 +1255,7 @@ export default function AvatarScene() {
         <p className="control-dock__fallback-note" data-tone="info" role="note">
           {APP_CONFIG.usesBackend
             ? 'Backend mode: Recommendations and optional ElevenLabs speech use FastAPI. Browser speech remains available.'
-            : 'Static demo: Recommendations use the built-in 18-song catalog and voice stays in the browser.'}
+            : 'Static demo: Recommendations use the built-in 36-song catalog and voice stays in the browser.'}
         </p>
       </section>
     </main>
