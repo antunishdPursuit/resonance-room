@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  loadBrowserVoices,
   selectPreferredBrowserVoice,
 } from '../src/voice/browserVoice.js'
 
@@ -60,4 +61,50 @@ test('falls back to US English, then any English voice, then browser default', (
     'British',
   )
   assert.equal(selectPreferredBrowserVoice([]), null)
+})
+
+test('loads browser voices immediately or when the browser signals readiness', async () => {
+  const karen = voice('Karen', 'en-AU')
+  const immediateSynthesis = {
+    getVoices: () => [karen],
+  }
+
+  assert.deepEqual(await loadBrowserVoices(immediateSynthesis), [karen])
+
+  let availableVoices = []
+  let voicesChanged
+  let removedListener = false
+  const delayedSynthesis = {
+    getVoices: () => availableVoices,
+    addEventListener: (eventName, listener) => {
+      assert.equal(eventName, 'voiceschanged')
+      voicesChanged = listener
+    },
+    removeEventListener: (eventName, listener) => {
+      assert.equal(eventName, 'voiceschanged')
+      assert.equal(listener, voicesChanged)
+      removedListener = true
+    },
+  }
+
+  const loadingVoices = loadBrowserVoices(delayedSynthesis)
+  availableVoices = [karen]
+  voicesChanged()
+
+  assert.deepEqual(await loadingVoices, [karen])
+  assert.equal(removedListener, true)
+})
+
+test('continues safely when browser voices do not load in time', async () => {
+  let removedListener = false
+  const synthesis = {
+    getVoices: () => [],
+    addEventListener: () => {},
+    removeEventListener: () => {
+      removedListener = true
+    },
+  }
+
+  assert.deepEqual(await loadBrowserVoices(synthesis, 0), [])
+  assert.equal(removedListener, true)
 })
