@@ -1,10 +1,12 @@
 # Resonance Room
 
-Resonance Room is an interactive 3D music-discovery experience. Visitors talk with a virtual music guide, receive recommendations, explore a classroom, and save songs that fit their taste.
+[Try Resonance Room live](https://resonance-room-web.onrender.com/)
 
-The public release is a frontend-only React and Three.js site. It uses a bundled 18-song catalog and deterministic scoring in the browser, so its core experience does not depend on a server, provider key, or paid API. An optional FastAPI mode remains available for local development with Anthropic, Last.fm, and ElevenLabs.
+Resonance Room is an interactive 3D music-discovery experience. Talk with Esme inside a virtual classroom, receive six song recommendations, and like songs from the blackboard or the keyboard-accessible transcript.
 
-## Current Features
+The public demo runs entirely in the browser with a transparent, deterministic 18-song catalog. Its core experience does not require a backend, provider key, or paid API. An optional FastAPI mode supports Anthropic, Last.fm, and ElevenLabs during local development.
+
+## What You Can Do
 
 - Natural-language music requests based on genre, artist, mood, or activity
 - Six deterministic recommendations from a stored catalog in the public static build
@@ -19,6 +21,16 @@ The public release is a frontend-only React and Three.js site. It uses a bundled
 - A liked-song panel with safe external links when a provider supplies them
 - Browser speech in the public build and optional ElevenLabs speech in backend mode
 - Automated backend, frontend, dependency, and production-build checks
+
+## Controls
+
+- Move: `WASD` or arrow keys
+- Run: hold `Shift` while moving
+- Rotate the camera: drag with the primary pointer button
+- Zoom: mouse wheel
+- Restore the starting view: **Reset camera**
+
+Movement does not activate while a form control is focused.
 
 ## Project Lineage
 
@@ -149,16 +161,6 @@ npm.cmd run dev -- --host 127.0.0.1 --port 5173
 
 Delete `web/.env.local`, or set `VITE_APP_MODE=static`, before testing the frontend-only release again. Stop both development servers after testing and verify that ports `5173` and `8001` are closed.
 
-## Controls
-
-- Move: `WASD` or arrow keys
-- Run: hold `Shift` while moving
-- Rotate the camera: drag with the primary pointer button
-- Zoom: mouse wheel
-- Restore the starting view: **Reset camera**
-
-Movement does not activate while a form control is focused.
-
 ## Development Views
 
 These query parameters work only in the Vite development build:
@@ -216,4 +218,4 @@ See the [fallback model card](docs/fallback-model-card.md) for evaluation eviden
 
 ## Status
 
-Resonance Room is feature-complete for its current frontend-only scope. The remaining release gates are repository-history sanitation, GitHub replacement verification, Render deployment, and a public smoke test.
+Resonance Room is live and feature-complete for its current frontend-only scope. The public Render release has passed its deployment and smoke-test checks. The optional FastAPI backend remains available for local development and possible future deployment work.
