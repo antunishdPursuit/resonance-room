@@ -44,10 +44,11 @@ The frontend suite covers:
 - six-song board layout, proximity, raycasting, and drag rejection;
 - shared board, transcript, and liked-song selection state;
 - production animation assignments, finite sequences, and development-preview filtering;
+- the bundled animation asset containing only approved production clips;
 - restrained speaking facial motion;
 - speech-bubble positioning, edge clamping, and visibility.
 
-The current release baseline is 72 passing frontend tests and 15 passing Python tests.
+The current release baseline is 73 passing frontend tests and 15 passing Python tests.
 
 ## Production build
 
