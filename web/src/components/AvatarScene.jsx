@@ -396,7 +396,7 @@ export default function AvatarScene() {
 
         const vrm = gltf.userData.vrm
         disableUnwantedSpringBones(vrm)
-        VRMUtils.removeUnnecessaryJoints(vrm.scene)
+        VRMUtils.combineSkeletons(vrm.scene)
         positionOpeningAvatar(vrm.scene)
         scene.add(vrm.scene)
         vrmRef.current = vrm
