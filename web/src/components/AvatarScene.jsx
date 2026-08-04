@@ -60,6 +60,7 @@ import { calculateSpeechBubblePosition } from '../ui/speechBubblePosition.js'
 import { createAppConfig } from '../config/appConfig.js'
 import { createChatClient } from '../chat/chatClient.js'
 import { GUIDED_VIBES } from '../recommendations/fallbackRecommender.js'
+import { deriveTasteProfile } from '../recommendations/tasteProfile.js'
 import { createBackendVoiceClient } from '../voice/backendVoiceClient.js'
 
 const APP_CONFIG = createAppConfig({
@@ -164,13 +165,27 @@ export default function AvatarScene() {
   }, [])
 
   useEffect(() => {
-    if (APP_CONFIG.usesBackend && pickedSongs.length === 5 && !profileBuilt) {
+    if (pickedSongs.length < 5 || profileBuilt) return
+
+    if (APP_CONFIG.usesBackend) {
       setProfileBuilt(true)
       const songList = pickedSongs.map(s => `"${s.title}" by ${s.artist}`).join(', ')
-      const autoMsg  = `I just picked 5 songs I love: ${songList}. Based on these picks, what can you tell about my music taste? Please recommend new songs I haven't heard — do not suggest any of the songs I just listed.`
+      const autoMsg = `I just picked 5 songs I love: ${songList}. Based on these picks, what can you tell about my music taste? Please recommend new songs I haven't heard — do not suggest any of the songs I just listed.`
       sendMessage(autoMsg)
+      return
     }
-  }, [pickedSongs])
+
+    const tasteProfile = deriveTasteProfile(pickedSongs)
+    if (!tasteProfile) return
+
+    setProfileBuilt(true)
+    setMessages(previous => [...previous, {
+      role: 'assistant',
+      content: `${tasteProfile.summary} I’ll keep that in mind for your next picks.`,
+      kind: 'profile',
+    }])
+    speak(tasteProfile.summary)
+  }, [pickedSongs, profileBuilt])
 
   useEffect(() => {
     if (!shouldStartOpeningGreeting({
@@ -746,7 +761,9 @@ export default function AvatarScene() {
     setLoading(true)
 
     try {
-      const data = await REQUEST_CHAT_REPLY(requestHistory)
+      const data = await REQUEST_CHAT_REPLY(requestHistory, {
+        tasteProfile: deriveTasteProfile(pickedSongsRef.current),
+      })
       const reply = data.response
 
       setMessages(prev => [...prev, {

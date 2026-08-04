@@ -65,6 +65,22 @@ test('avoids songs from the previous set while alternatives remain', () => {
   assert.equal(second.some(song => firstTitles.has(song.title)), false)
 })
 
+test('varies the reply when the same vibe is selected again', () => {
+  const first = createFallbackChatReply('chill', { repeatCount: 1 })
+  const second = createFallbackChatReply('chill', { repeatCount: 2 })
+
+  assert.notEqual(second.response, first.response)
+  assert.match(second.response, /fresh set/)
+})
+
+test('acknowledges the session taste profile in later replies', () => {
+  const reply = createFallbackChatReply('moody', {
+    tasteProfile: { genre: 'lofi' },
+  })
+
+  assert.match(reply.response, /likes lean toward lofi/)
+})
+
 test('keeps artist diversity when the catalog can fill all six slots', () => {
   const artists = recommendFallbackSongs('pop').map(song => song.artist)
 

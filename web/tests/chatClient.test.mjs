@@ -49,8 +49,33 @@ test('passes earlier static recommendations to the fallback as exclusions', asyn
 
   assert.deepEqual(calls, [{
     message: 'chill',
-    options: { excludeSongs: [priorSong] },
+    options: {
+      excludeSongs: [priorSong],
+      repeatCount: 1,
+      tasteProfile: null,
+    },
   }])
+})
+
+test('passes repeat and taste context to the static fallback', async () => {
+  const calls = []
+  const requestReply = createChatClient({
+    appConfig: createAppConfig(),
+    fallbackReply: async (message, options) => {
+      calls.push({ message, options })
+      return { response: 'Try these.', recommendations: [] }
+    },
+  })
+  const tasteProfile = { genre: 'lofi' }
+
+  await requestReply([
+    { role: 'user', content: 'Chill' },
+    { role: 'assistant', content: 'Try these.', songs: [] },
+    { role: 'user', content: 'Chill' },
+  ], { tasteProfile })
+
+  assert.equal(calls[0].options.repeatCount, 2)
+  assert.equal(calls[0].options.tasteProfile, tasteProfile)
 })
 
 test('sends the bounded conversation to FastAPI in backend mode', async () => {

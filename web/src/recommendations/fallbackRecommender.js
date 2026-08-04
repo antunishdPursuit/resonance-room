@@ -107,14 +107,45 @@ const KEYWORD_PROFILES = [
 ]
 
 const PROFILE_INTROS = {
-  'Chill Lofi Student': "I can feel those chill study vibes! Here are some mellow tracks I think you'll love.",
-  'Focused Work': 'Here are some steady tracks to help you settle in and focus.',
-  'High-Energy Pop Fan': 'You want to move! Here are some high-energy tracks to keep the momentum going.',
-  'Feel-good Lift': 'Let’s brighten the room with something warm and upbeat.',
-  'Moody Night': 'Here are some late-night tracks with a little more shadow.',
-  'Deep Intense Rock': 'Time to turn it up! Here are some intense tracks that should hit the spot.',
-  'Conflicted (high energy + melancholic mood)': "Here are some tracks with that raw, emotional intensity you're after.",
+  'Chill Lofi Student': [
+    "I can feel those chill study vibes! Here are some mellow tracks I think you'll love.",
+    'Staying mellow? I found a fresh set that keeps the room calm.',
+    'Let’s keep it easygoing with six more quiet favorites.',
+  ],
+  'Focused Work': [
+    'Here are some steady tracks to help you settle in and focus.',
+    'Back in focus mode? I picked a different set to keep things moving.',
+    'Here are six more low-distraction tracks for your next stretch.',
+  ],
+  'High-Energy Pop Fan': [
+    'You want to move! Here are some high-energy tracks to keep the momentum going.',
+    'Keeping the energy up? This set brings a different kind of momentum.',
+    'I found six more bright, fast tracks for you.',
+  ],
+  'Feel-good Lift': [
+    'Let’s brighten the room with something warm and upbeat.',
+    'More feel-good music coming up, with a fresh group this time.',
+    'Here are six more tracks made for a lighter mood.',
+  ],
+  'Moody Night': [
+    'Here are some late-night tracks with a little more shadow.',
+    'Let’s stay in that moody lane with a different set of songs.',
+    'I found six more tracks for the quieter side of the night.',
+  ],
+  'Deep Intense Rock': [
+    'Time to turn it up! Here are some intense tracks that should hit the spot.',
+    'Still going loud? I found a new set with the same edge.',
+  ],
+  'Conflicted (high energy + melancholic mood)': [
+    "Here are some tracks with that raw, emotional intensity you're after.",
+    'I found another set that balances heavy energy with a darker mood.',
+  ],
 }
+const DEFAULT_INTROS = [
+  "Here are some tracks I think you'll enjoy!",
+  'Let’s try a different corner of the catalog this time.',
+  'I picked six more songs to keep the surprise going.',
+]
 
 function profileForMessage(message) {
   const words = new Set(message.toLowerCase().split(/[^a-z0-9-]+/))
@@ -183,14 +214,21 @@ export function recommendFallbackSongs(message, catalog = SONG_CATALOG, {
 export function createFallbackChatReply(message, options) {
   const profile = profileForMessage(message)
   const recommendations = recommendFallbackSongs(message, SONG_CATALOG, options)
-  const intro = PROFILE_INTROS[profile.name] ?? "Here are some tracks I think you'll enjoy!"
+  const intros = PROFILE_INTROS[profile.name] ?? DEFAULT_INTROS
+  const repeatCount = Number.isInteger(options?.repeatCount)
+    ? Math.max(1, options.repeatCount)
+    : 1
+  const intro = intros[(repeatCount - 1) % intros.length]
+  const tasteNote = options?.tasteProfile?.genre
+    ? ` I remember your likes lean toward ${options.tasteProfile.genre}, too.`
+    : ''
   const startingTitles = recommendations
     .slice(0, 2)
     .map(song => `"${song.title}"`)
     .join(' and ')
 
   return {
-    response: `${intro} I'd start with ${startingTitles}.`,
+    response: `${intro}${tasteNote} I'd start with ${startingTitles}.`,
     recommendations,
   }
 }
