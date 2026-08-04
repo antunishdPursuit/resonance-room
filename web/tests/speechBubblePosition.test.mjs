@@ -13,7 +13,7 @@ const BASE_INPUT = {
   bubbleHeight: 100,
 }
 
-test('centers the bubble above the projected head position', () => {
+test('positions and clamps a visible bubble around Esme', () => {
   const position = calculateSpeechBubblePosition(BASE_INPUT)
 
   assert.deepEqual(position, {
@@ -22,9 +22,6 @@ test('centers the bubble above the projected head position', () => {
     tailOffset: 160,
     visible: true,
   })
-})
-
-test('clamps the bubble and tail near the viewport edges', () => {
   const leftEdge = calculateSpeechBubblePosition({
     ...BASE_INPUT,
     normalizedX: -1,
@@ -38,18 +35,15 @@ test('clamps the bubble and tail near the viewport edges', () => {
   assert.equal(leftEdge.tailOffset, 24)
   assert.equal(rightEdge.left, 664)
   assert.equal(rightEdge.tailOffset, 296)
-})
-
-test('keeps the bubble inside the top viewport margin', () => {
-  const position = calculateSpeechBubblePosition({
+  const topEdge = calculateSpeechBubblePosition({
     ...BASE_INPUT,
     normalizedY: 1,
   })
 
-  assert.equal(position.top, 16)
+  assert.equal(topEdge.top, 16)
 })
 
-test('hides the bubble when its anchor is behind or outside the camera view', () => {
+test('hides a bubble that cannot be positioned safely', () => {
   const behindCamera = calculateSpeechBubblePosition({
     ...BASE_INPUT,
     inFront: false,
@@ -66,13 +60,10 @@ test('hides the bubble when its anchor is behind or outside the camera view', ()
   assert.equal(behindCamera.visible, false)
   assert.equal(outsideDepth.visible, false)
   assert.equal(farOutsideViewport.visible, false)
-})
-
-test('hides the bubble when measurements are invalid', () => {
-  const position = calculateSpeechBubblePosition({
+  const invalidMeasurement = calculateSpeechBubblePosition({
     ...BASE_INPUT,
     bubbleWidth: 0,
   })
 
-  assert.equal(position.visible, false)
+  assert.equal(invalidMeasurement.visible, false)
 })

@@ -19,27 +19,28 @@ function createPositionRecorder() {
   }
 }
 
-test('positions Esme at the approved front-classroom opening location', () => {
-  const position = createPositionRecorder()
-
-  positionOpeningAvatar({ position })
-
-  assert.deepEqual(position.values, CLASSROOM_OPENING_COMPOSITION.avatar)
-})
-
-test('positions the camera relative to Esme and aims at her upper body', () => {
-  const position = createPositionRecorder()
+test('positions Esme and the camera in the approved opening composition', () => {
+  const avatarPosition = createPositionRecorder()
+  const cameraPosition = createPositionRecorder()
   let target = null
   const camera = {
-    position,
+    position: cameraPosition,
     lookAt(x, y, z) {
       target = { x, y, z }
     },
   }
 
+  positionOpeningAvatar({ position: avatarPosition })
   positionOpeningCamera(camera)
 
-  assert.deepEqual(position.values, CLASSROOM_OPENING_COMPOSITION.camera)
+  assert.deepEqual(
+    avatarPosition.values,
+    CLASSROOM_OPENING_COMPOSITION.avatar,
+  )
+  assert.deepEqual(
+    cameraPosition.values,
+    CLASSROOM_OPENING_COMPOSITION.camera,
+  )
   assert.deepEqual(target, CLASSROOM_OPENING_COMPOSITION.target)
   assert.ok(
     Math.abs(
@@ -55,7 +56,7 @@ test('positions the camera relative to Esme and aims at her upper body', () => {
   )
 })
 
-test('starts the greeting only after the classroom and animation settle', () => {
+test('starts the greeting once after the classroom and animation settle', () => {
   assert.equal(shouldStartOpeningGreeting({
     classroomReady: false,
     greetingReady: true,
@@ -71,9 +72,6 @@ test('starts the greeting only after the classroom and animation settle', () => 
     greetingReady: true,
     greetingPlayed: false,
   }), true)
-})
-
-test('does not replay an opening greeting that already started', () => {
   assert.equal(shouldStartOpeningGreeting({
     classroomReady: true,
     greetingReady: true,

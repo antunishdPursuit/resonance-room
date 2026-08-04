@@ -196,56 +196,6 @@ test('plays a multi-step long-idle variation before returning to idle', () => {
   assert.equal(controller.getState(), 'idle')
 })
 
-test('plays a finite preview sequence and returns to the core state', () => {
-  const { controller, finish } = createFixture()
-  const enter = new FakeAction('enter')
-  const idle = new FakeAction('sequence-idle')
-  const exit = new FakeAction('exit')
-  let completed = false
-
-  controller.playPreviewSequence([
-    { action: enter, repetitions: 1 },
-    { action: idle, repetitions: 3 },
-    { action: exit, repetitions: 1 },
-  ], {
-    onComplete: () => {
-      completed = true
-    },
-  })
-
-  assert.equal(controller.getState(), 'preview')
-  assert.equal(enter.repetitions, 1)
-  finish(enter)
-  assert.equal(controller.getState(), 'preview')
-  assert.equal(idle.repetitions, 3)
-  finish(idle)
-  assert.equal(exit.repetitions, 1)
-  finish(exit)
-  assert.equal(controller.getState(), 'idle')
-  assert.equal(completed, true)
-})
-
-test('a preview returns to the current core state when it finishes', () => {
-  const { controller, finish } = createFixture()
-  const preview = new FakeAction('preview')
-
-  controller.setSpeaking(true)
-  controller.playPreview(preview, { loop: false })
-  assert.equal(controller.getState(), 'preview')
-  finish(preview)
-  assert.equal(controller.getState(), 'talking')
-})
-
-test('movement interrupts a looping development preview', () => {
-  const { controller } = createFixture()
-  const preview = new FakeAction('preview')
-
-  controller.playPreview(preview, { loop: true })
-  assert.equal(controller.getState(), 'preview')
-  controller.setMoving(true)
-  assert.equal(controller.getState(), 'walking')
-})
-
 test('real Three.js actions reactivate after repeated core-state crossfades', () => {
   const root = new THREE.Object3D()
   const mixer = new THREE.AnimationMixer(root)

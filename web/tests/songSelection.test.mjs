@@ -26,12 +26,6 @@ test('keeps songs with the same title from different artists distinct', () => {
   assert.deepEqual(selected, [firstSong, secondSong])
   assert.equal(isSongSelected(selected, firstSong), true)
   assert.equal(isSongSelected(selected, secondSong), true)
-})
-
-test('removes the matching song without changing the input selection', () => {
-  const firstSong = { title: 'One', artist: 'Artist 1' }
-  const secondSong = { title: 'Two', artist: 'Artist 2' }
-  const selected = [firstSong, secondSong]
 
   const remaining = removeSongSelection(selected, { ...firstSong })
 
