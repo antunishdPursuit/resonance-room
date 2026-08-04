@@ -471,6 +471,26 @@ summary:focus-visible {
   gap: 10px;
 }
 
+.vibe-picker {
+  order: 2;
+  display: flex;
+  flex: 1 1 560px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.vibe-picker__label {
+  color: var(--esme-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.button--vibe {
+  padding-inline: 14px;
+}
+
 .control-dock__actions .button--primary {
   order: 0;
 }
@@ -833,6 +853,20 @@ summary:focus-visible {
 
   .composer-input {
     flex-basis: calc(100% - 110px);
+  }
+
+  .vibe-picker {
+    flex-basis: 100%;
+    flex-wrap: wrap;
+  }
+
+  .vibe-picker__label {
+    flex-basis: 100%;
+    text-align: center;
+  }
+
+  .button--vibe {
+    flex: 1 1 calc(33.333% - 8px);
   }
 
   .control-dock__help {
