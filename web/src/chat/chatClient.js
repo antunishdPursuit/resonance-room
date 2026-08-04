@@ -30,6 +30,14 @@ function latestUserMessage(messages) {
   return message.content
 }
 
+function previouslyRecommendedSongs(messages) {
+  return messages.flatMap(message => (
+    message?.role === 'assistant' && Array.isArray(message.songs)
+      ? message.songs
+      : []
+  ))
+}
+
 function normalizeBackendReply(data) {
   if (!data || typeof data.response !== 'string' || !data.response.trim()) {
     throw new Error('Chat response did not include a reply.')
@@ -57,7 +65,9 @@ export function createChatClient({
     const userText = latestUserMessage(requestMessages)
 
     if (!appConfig.usesBackend) {
-      return fallbackReply(userText)
+      return fallbackReply(userText, {
+        excludeSongs: previouslyRecommendedSongs(messages),
+      })
     }
 
     const response = await fetchImpl(`${appConfig.apiBaseUrl}/chat`, {

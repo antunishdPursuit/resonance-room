@@ -31,6 +31,28 @@ test('uses the local recommender without fetching in static mode', async () => {
   assert.equal(reply.recommendations[0].title, 'Gym Hero')
 })
 
+test('passes earlier static recommendations to the fallback as exclusions', async () => {
+  const calls = []
+  const requestReply = createChatClient({
+    appConfig: createAppConfig(),
+    fallbackReply: async (message, options) => {
+      calls.push({ message, options })
+      return { response: 'Try these.', recommendations: [] }
+    },
+  })
+  const priorSong = { title: 'Earlier Song', artist: 'Earlier Artist' }
+
+  await requestReply([
+    { role: 'assistant', content: 'Try this.', songs: [priorSong] },
+    { role: 'user', content: 'chill' },
+  ])
+
+  assert.deepEqual(calls, [{
+    message: 'chill',
+    options: { excludeSongs: [priorSong] },
+  }])
+})
+
 test('sends the bounded conversation to FastAPI in backend mode', async () => {
   const requests = []
   const requestReply = createChatClient({
