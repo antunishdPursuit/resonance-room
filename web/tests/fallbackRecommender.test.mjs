@@ -15,7 +15,7 @@ test('returns six deterministic recommendations from the frontend catalog', () =
   assert.deepEqual(second, first)
   assert.deepEqual(
     first.slice(0, 2).map(song => song.title),
-    ['Gym Hero', 'Sunrise City'],
+    ['Gym Hero', 'Fast Forward'],
   )
 })
 
@@ -42,8 +42,8 @@ test('keeps artist diversity when the catalog can fill all six slots', () => {
   assert.equal(new Set(artists).size, artists.length)
 })
 
-test('preserves all 18 stored songs as the static frontend source', () => {
-  assert.equal(SONG_CATALOG.length, 18)
+test('preserves all 36 stored songs as the static frontend source', () => {
+  assert.equal(SONG_CATALOG.length, 36)
   assert.equal(SONG_CATALOG[0].title, 'Sunrise City')
-  assert.equal(SONG_CATALOG.at(-1).title, 'Slow Burn Summer')
+  assert.equal(SONG_CATALOG.at(-1).title, 'Last Train Home')
 })
