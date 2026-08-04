@@ -62,7 +62,10 @@ import { createChatClient } from '../chat/chatClient.js'
 import { GUIDED_VIBES } from '../recommendations/fallbackRecommender.js'
 import { deriveTasteProfile } from '../recommendations/tasteProfile.js'
 import { createBackendVoiceClient } from '../voice/backendVoiceClient.js'
-import { selectPreferredBrowserVoice } from '../voice/browserVoice.js'
+import {
+  loadBrowserVoices,
+  selectPreferredBrowserVoice,
+} from '../voice/browserVoice.js'
 
 const APP_CONFIG = createAppConfig({
   mode: import.meta.env.VITE_APP_MODE,
@@ -397,12 +400,13 @@ export default function AvatarScene() {
     }
 
     // TTS — exposed to speak button
-    speakRef.current = (text) => {
+    speakRef.current = async (text) => {
       if (!text.trim() || !vrmRef.current) return
       window.speechSynthesis.cancel()
+      const availableVoices = await loadBrowserVoices(window.speechSynthesis)
       const utterance       = new SpeechSynthesisUtterance(text)
       const preferredVoice  = selectPreferredBrowserVoice(
-        window.speechSynthesis.getVoices(),
+        availableVoices,
       )
       if (preferredVoice) utterance.voice = preferredVoice
       utterance.onstart     = () => startLipSyncRef.current?.()
