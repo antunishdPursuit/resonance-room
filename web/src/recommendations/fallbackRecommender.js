@@ -163,7 +163,16 @@ export function recommendFallbackSongs(message, catalog = SONG_CATALOG, {
 
   for (const { song } of candidateRanking) {
     if (useArtistDiversity && seenArtists.has(song.artist)) continue
-    recommendations.push({ title: song.title, artist: song.artist, url: '' })
+    recommendations.push({
+      title: song.title,
+      artist: song.artist,
+      url: '',
+      genre: song.genre,
+      mood: song.mood,
+      energy: song.energy,
+      danceability: song.danceability,
+      acousticness: song.acousticness,
+    })
     seenArtists.add(song.artist)
     if (recommendations.length === RECOMMENDATION_COUNT) break
   }
