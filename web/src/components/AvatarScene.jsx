@@ -556,7 +556,8 @@ export default function AvatarScene() {
     const blinkState = createBlinkState()
 
     // Render loop
-    const clock = new THREE.Clock()
+    const timer = new THREE.Timer()
+    timer.connect(document)
     const speechAnchorWorld = new THREE.Vector3()
     const speechAnchorCamera = new THREE.Vector3()
     let animId
@@ -601,9 +602,10 @@ export default function AvatarScene() {
       bubble.dataset.visible = String(position.visible)
     }
 
-    function animate() {
+    function animate(timestamp) {
       animId = requestAnimationFrame(animate)
-      const delta = clock.getDelta()
+      timer.update(timestamp)
+      const delta = timer.getDelta()
       const vrm = vrmRef.current
 
       const movement = movementController?.update(delta) ?? {
@@ -661,6 +663,7 @@ export default function AvatarScene() {
     return () => {
       disposed = true
       cancelAnimationFrame(animId)
+      timer.dispose()
       window.removeEventListener('resize', onResize)
       window.speechSynthesis.cancel()
       classroomInspector?.dispose()
