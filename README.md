@@ -4,12 +4,15 @@
 
 Resonance Room is an interactive 3D music-discovery experience. Talk with Esme inside a virtual classroom, receive six song recommendations, and like songs from the blackboard or the keyboard-accessible transcript.
 
-The public demo runs entirely in the browser with a transparent, deterministic 18-song catalog. Its core experience does not require a backend, provider key, or paid API. An optional FastAPI mode supports Anthropic, Last.fm, and ElevenLabs during local development.
+The public demo runs entirely in the browser with a transparent, deterministic 36-song catalog. Its core experience does not require a backend, provider key, or paid API. An optional FastAPI mode supports Anthropic, Last.fm, and ElevenLabs during local development.
 
 ## What You Can Do
 
-- Natural-language music requests based on genre, artist, mood, or activity
-- Six deterministic recommendations from a stored catalog in the public static build
+- Six guided vibe choices in the public static build: Chill, Focus, Energy, Feel-good, Moody, and Surprise me
+- Six deterministic recommendations from a 36-song stored catalog
+- Fresh recommendation sets when a vibe repeats and unused matches remain
+- A session-only taste summary after five liked static-catalog songs
+- Natural-language music requests in optional local backend mode
 - Optional real-song discovery through Last.fm in local backend mode
 - A movable VRM avatar with walking, running, idle, greeting, facial, and lip-sync behavior
 - Collision-aware movement through a mapped 3D classroom
@@ -46,8 +49,8 @@ The application has two explicit modes:
 Public static mode
 Visitor
   -> React + Three.js classroom
-  -> browser keyword matching + deterministic scoring
-  -> bundled 18-song catalog
+  -> guided vibe matching + deterministic scoring
+  -> bundled 36-song catalog
   -> response, six-song board, transcript, and liked-song panel
   -> browser speech
 
@@ -198,12 +201,12 @@ Provider-dependent Anthropic, Last.fm, and ElevenLabs behavior requires valid lo
 
 ## Recommendation Boundaries
 
-- The bundled catalog contains only 18 synthetic records.
-- Static intent matching recognizes a small set of genre, mood, and activity keywords.
-- Static recommendations use the latest submitted message; backend mode receives a bounded conversation history.
+- The bundled static catalog contains only 36 synthetic records.
+- Static mode offers six preset vibes instead of open-ended chat.
+- Static recommendations use the selected vibe and prior session results; backend mode receives a bounded conversation history.
 - Exact genre and mood labels can outweigh otherwise similar audio characteristics.
 - The liked-song list has no fixed maximum.
-- Five liked songs trigger a taste-profile request only in optional backend mode.
+- Five compatible liked songs create one session-only taste summary in static mode; backend mode sends its existing automatic profile request.
 - The conversation context is limited to 20 messages.
 - Last.fm results depend on community-generated tags and provider availability.
 

@@ -1,14 +1,15 @@
 # How the Fallback Recommender Works
 
-Resonance Room uses this transparent local recommender as the public frontend's default recommendation path. A JavaScript implementation runs entirely in the browser over the bundled 18-song catalog. The optional FastAPI mode uses the equivalent Python path when Anthropic or Last.fm is unavailable.
+Resonance Room uses this transparent local recommender as the public frontend's default recommendation path. A JavaScript implementation runs entirely in the browser over a bundled 36-song catalog. The optional FastAPI mode keeps a separate 18-song Python fallback when Anthropic or Last.fm is unavailable.
 
 ---
 
 ## Implementations and outputs
 
-- `web/src/recommendations/songCatalog.js` stores the 18 records used by static mode.
-- `web/src/recommendations/fallbackRecommender.js` matches the latest message, scores the catalog, and returns six title-and-artist records with a short response.
-- `data/songs.csv` stores the same 18 records for the Python backend and evaluation path.
+- `web/src/recommendations/songCatalog.js` stores the 36 synthetic records used by static mode.
+- `web/src/recommendations/fallbackRecommender.js` matches one of six guided vibes, scores the catalog, avoids recent results when alternatives remain, and returns six song records with a short response.
+- `web/src/recommendations/tasteProfile.js` summarizes five liked static-catalog songs for the current session.
+- `data/songs.csv` stores 18 records for the separate Python backend and evaluation path.
 - `src/recommender.py` can also return scores and plain-language explanations for evaluation.
 
 The public song rows do not display the Python evaluator's per-song scores or explanations.
@@ -24,13 +25,18 @@ Every song in the catalog carries two types of information:
 
 ---
 
-## What the user profile stores
+## What the recommendation profile stores
 
-The user profile is a snapshot of your taste:
+Each guided vibe maps to a fixed recommendation target:
 
 - Your preferred level for each audio feature — for example, "I like high-energy, happy-sounding, very danceable songs"
 - Your preferred genres and moods (e.g., pop and lofi; happy and chill)
 - How much each feature matters to you (so genre can count more than tempo if you care more about style than speed)
+
+After five compatible likes, static mode also derives a session-only taste
+summary from the liked songs' most common genre and mood plus their average
+energy, danceability, and acousticness. This summary changes Esme's wording; it
+does not persist after a reload.
 
 ---
 
@@ -59,7 +65,8 @@ Every song in the catalog is scored against the user profile using a point syste
 1. Every song in the catalog gets a score.
 2. Songs are sorted from highest to lowest score.
 3. A diversity check runs. If two top songs are by the same artist, the lower-ranked one is skipped so the list feels more varied.
-4. The requested number of songs after that check become the recommendations.
+4. Songs already shown in the session are skipped when at least six unused matches remain.
+5. The requested number of songs after those checks become the recommendations.
    Resonance Room requests six for the classroom board; the standalone
    evaluation uses five unless another value is supplied.
 
@@ -73,7 +80,7 @@ Every song in the catalog is scored against the user profile using a point syste
 
 - **Single target per feature.** The profile stores one preferred energy level, one preferred tempo, etc. A user whose taste varies by time of day (upbeat in the morning, chill at night) cannot express that nuance — the system picks an average that may satisfy neither mood.
 
-- **Small catalog amplifies all of the above.** With only 18 songs, a bias toward one genre can eliminate most of the catalog immediately. In a real system with millions of tracks this effect is diluted; here it is stark.
+- **Small catalog amplifies all of the above.** With only 36 static songs, a bias toward one genre can eliminate most of the catalog immediately. In a real system with millions of tracks this effect is diluted; here it is stark.
 
 ---
 
@@ -84,7 +91,7 @@ flowchart TD
     Message([User message])
     StaticMatcher["JavaScript keyword matcher"]
     BackendMatcher["Python keyword matcher"]
-    StaticCatalog[("songCatalog.js - 18 records")]
+    StaticCatalog[("songCatalog.js - 36 records")]
     PythonCatalog[("songs.csv - 18 records")]
     Profile["Target genre, mood, and audio features"]
 
