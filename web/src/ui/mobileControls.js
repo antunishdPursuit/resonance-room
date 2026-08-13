@@ -39,6 +39,20 @@ export function getEntryState({
   return assetsReady ? 'ready' : 'loading'
 }
 
+export function shouldShowMobileControls({
+  isPhone,
+  isLandscape,
+  entryStarted,
+  loaderVisible,
+}) {
+  return Boolean(
+    isPhone
+    && isLandscape
+    && entryStarted
+    && !loaderVisible,
+  )
+}
+
 export function calculateJoystickInput({
   centerX,
   centerY,

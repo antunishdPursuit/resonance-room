@@ -692,36 +692,9 @@ summary:focus-visible {
   background: rgba(42, 26, 20, 0.92) !important;
 }
 
-.mode-badge,
-.controls-trigger {
-  position: absolute;
-  top: max(14px, env(safe-area-inset-top));
-  z-index: 21;
-}
-
-.mode-badge {
-  left: max(14px, env(safe-area-inset-left));
-  min-height: 36px;
-  padding: 7px 11px;
-  color: var(--esme-info);
-  background: var(--esme-surface);
-  border: 1px solid var(--esme-border);
-  border-radius: 999px;
-  box-shadow: var(--esme-shadow);
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 600;
-  cursor: pointer;
-  backdrop-filter: blur(14px);
-}
-
-.controls-trigger {
-  right: max(14px, env(safe-area-inset-right));
-}
-
 .controls-menu {
   position: absolute;
-  top: calc(max(14px, env(safe-area-inset-top)) + 46px);
+  top: max(14px, env(safe-area-inset-top));
   right: max(14px, env(safe-area-inset-right));
   z-index: 25;
   display: grid;
@@ -1267,13 +1240,15 @@ summary:focus-visible {
 }
 
 .esme-app[data-phone-landscape="true"] .liked-panel,
-.esme-app[data-phone-landscape="true"] .transcript {
+.esme-app[data-phone-landscape="true"] .transcript,
+.esme-app[data-phone-landscape="true"] .controls-menu {
   top: max(8px, env(safe-area-inset-top)) !important;
   right: max(8px, env(safe-area-inset-right)) !important;
   bottom: auto !important;
   left: auto !important;
   width: min(420px, calc(100dvw - 154px)) !important;
   max-height: calc(100dvh - var(--mobile-actions-height) - 20px) !important;
+  overflow-y: auto;
 }
 
 .esme-app[data-phone-landscape="true"] .liked-panel {
@@ -1320,20 +1295,29 @@ summary:focus-visible {
 }
 
 .esme-app[data-phone-landscape="true"] .gameplay-actions {
-  right: max(8px, env(safe-area-inset-right));
+  right: auto;
   bottom: max(8px, env(safe-area-inset-bottom)) !important;
-  left: calc(max(8px, env(safe-area-inset-left)) + 128px);
-  width: auto;
-  justify-content: space-between;
+  left: 50%;
+  width: max-content;
+  max-width: calc(100dvw - 16px);
+  justify-content: center;
   gap: 6px;
   padding: 6px;
-  transform: none;
+  transform: translateX(-50%);
 }
 
 .esme-app[data-phone-landscape="true"] .gameplay-actions .button {
   min-height: 38px;
   padding: 7px 9px;
   font-size: 0.68rem;
+}
+
+.esme-app[data-phone-landscape="true"] .vibe-control__trigger {
+  min-width: 118px;
+}
+
+.esme-app[data-phone-landscape="true"] .gameplay-actions__utilities {
+  gap: 4px;
 }
 
 .esme-app[data-phone-landscape="true"] .vibe-tray {

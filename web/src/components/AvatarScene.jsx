@@ -78,7 +78,10 @@ import {
 import {
   MobileTouchControls,
 } from './MobileExperience.jsx'
-import { classifyPhoneViewport } from '../ui/mobileControls.js'
+import {
+  classifyPhoneViewport,
+  shouldShowMobileControls,
+} from '../ui/mobileControls.js'
 
 const APP_CONFIG = createAppConfig({
   mode: import.meta.env.VITE_APP_MODE,
@@ -175,14 +178,12 @@ export default function AvatarScene() {
   const experienceAssetsReady = classroomReady
     && openingGreetingReady
     && movementReady
-  const mobileControlsActive = isPhoneExperience
-    && isPhoneLandscape
-    && entryStarted
-    && !loaderVisible
-    && !controlsOpen
-    && !transcriptOpen
-    && !likedPanelOpen
-    && !vibePickerOpen
+  const mobileControlsActive = shouldShowMobileControls({
+    isPhone: isPhoneExperience,
+    isLandscape: isPhoneLandscape,
+    entryStarted,
+    loaderVisible,
+  })
 
   useEffect(() => { messagesRef.current      = messages      }, [messages])
   useEffect(() => { voiceEnabledRef.current  = voiceEnabled  }, [voiceEnabled])
@@ -1381,18 +1382,6 @@ export default function AvatarScene() {
 
       {gameplayUiVisible && (
         <>
-          <button className="mode-badge" onClick={openControls}>
-            {APP_CONFIG.usesBackend ? 'Backend mode' : 'Static demo'}
-          </button>
-
-          <button
-            className="button button--secondary controls-trigger"
-            aria-expanded={controlsOpen}
-            onClick={toggleControlsMenu}
-          >
-            Controls
-          </button>
-
           <ControlsMenu
             isPhone={isPhoneExperience}
             isStatic={!APP_CONFIG.usesBackend}
@@ -1425,7 +1414,7 @@ export default function AvatarScene() {
             </div>
           )}
 
-          <section className="gameplay-actions" aria-label="Talk to Esme">
+          <section className="gameplay-actions" aria-label="Experience actions">
             {APP_CONFIG.usesBackend ? (
               <div className="composer">
                 <input
@@ -1493,6 +1482,13 @@ export default function AvatarScene() {
                 onClick={toggleLikedPanel}
               >
                 Liked ({pickedSongs.length})
+              </button>
+              <button
+                className="button button--secondary button--compact"
+                aria-expanded={controlsOpen}
+                onClick={toggleControlsMenu}
+              >
+                Controls
               </button>
             </div>
           </section>
