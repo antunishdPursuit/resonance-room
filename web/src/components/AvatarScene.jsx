@@ -32,6 +32,9 @@ import {
   createClassroomMovementEnvironment,
   createCollisionDebugView,
 } from '../classroom/classroomMovementEnvironment.js'
+import {
+  createClassroomCampusEnvironment,
+} from '../classroom/classroomCampusEnvironment.js'
 import { createAvatarMovementController } from '../classroom/avatarMovementController.js'
 import {
   createClassroomOcclusionController,
@@ -329,6 +332,9 @@ export default function AvatarScene() {
     let classroomInspector = null
     let classroomInspectionCamera = null
     let movementEnvironment = null
+    let campusEnvironment = null
+    let cameraBlockers = null
+    let sceneOcclusionMeshes = null
     let movementController = null
     let occlusionController = null
     let collisionDebugView = null
@@ -352,6 +358,7 @@ export default function AvatarScene() {
         camera,
         canvas,
         environment: movementEnvironment,
+        cameraBlockers,
       })
       movementControllerRef.current = movementController
       resetCameraRef.current = movementController.resetCamera
@@ -374,7 +381,7 @@ export default function AvatarScene() {
       occlusionController = createClassroomOcclusionController({
         camera,
         avatarRoot: vrmRef.current.scene,
-        classroomMeshes: movementEnvironment.classroomMeshes,
+        classroomMeshes: sceneOcclusionMeshes,
         reducedMotion: window.matchMedia(
           '(prefers-reduced-motion: reduce)',
         ).matches,
@@ -391,7 +398,7 @@ export default function AvatarScene() {
     const scene = new THREE.Scene()
 
     // Camera
-    const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 20)
+    const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 60)
     positionOpeningCamera(camera)
 
     if (CLASSROOM_INSPECTION_ENABLED) {
@@ -427,6 +434,23 @@ export default function AvatarScene() {
           classroomRoot: gltf.scene,
           parser: gltf.parser,
         })
+        campusEnvironment = createClassroomCampusEnvironment({
+          roomBounds: movementEnvironment.walkableBounds,
+        })
+        scene.add(campusEnvironment.object3d)
+        const importedRoomShells = movementEnvironment.classroomMeshes.filter(
+          mesh => mesh.userData.classroomSource?.nodeIndex === 52,
+        )
+        cameraBlockers = [
+          ...campusEnvironment.cameraBlockers,
+          ...importedRoomShells,
+        ]
+        sceneOcclusionMeshes = [
+          ...movementEnvironment.classroomMeshes.filter(
+            mesh => mesh.userData.classroomSource?.nodeIndex !== 52,
+          ),
+          ...campusEnvironment.occlusionMeshes,
+        ]
         const boardInteractionMinimumZ = getBoardInteractionMinimumZ(
           movementEnvironment.deskZones,
         )
@@ -816,6 +840,8 @@ export default function AvatarScene() {
       boardInteractionActionRef.current = null
       delete window.__ESME_MOVEMENT__
       collisionDebugView?.dispose()
+      campusEnvironment?.dispose()
+      campusEnvironment = null
       recommendationBoardInteraction?.dispose()
       if (recommendationBoard) {
         scene.remove(recommendationBoard.object3d)

@@ -1,11 +1,45 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import * as THREE from 'three'
 
 import {
+  resolveCameraPosition,
   resolveMovementInput,
   shouldRunMovement,
   shouldStartCameraOrbit,
 } from '../src/classroom/avatarMovementController.js'
+
+test('keeps the camera inside a blocking classroom wall', () => {
+  const wall = new THREE.Mesh(
+    new THREE.BoxGeometry(0.2, 3, 4),
+    new THREE.MeshBasicMaterial(),
+  )
+  wall.position.set(2, 1.5, 0)
+  wall.updateMatrixWorld(true)
+
+  const resolved = resolveCameraPosition({
+    target: new THREE.Vector3(0, 1.15, 0),
+    desiredPosition: new THREE.Vector3(4, 1.15, 0),
+    blockers: [wall],
+  })
+
+  assert.ok(resolved.x < 1.9)
+  assert.equal(resolved.y, 1.15)
+  assert.equal(resolved.z, 0)
+
+  wall.geometry.dispose()
+  wall.material.dispose()
+})
+
+test('preserves the desired camera position when the room shell is clear', () => {
+  const desiredPosition = new THREE.Vector3(0, 2, 3)
+  const resolved = resolveCameraPosition({
+    target: new THREE.Vector3(0, 1, 0),
+    desiredPosition,
+  })
+
+  assert.deepEqual(resolved.toArray(), desiredPosition.toArray())
+})
 
 test('preserves keyboard movement and combines it safely with touch input', () => {
   const keyboard = resolveMovementInput({

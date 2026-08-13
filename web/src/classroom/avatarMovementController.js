@@ -23,6 +23,8 @@ const MIN_CAMERA_DISTANCE = 2.2
 const MAX_CAMERA_DISTANCE = 6
 const MIN_CAMERA_PITCH = -0.15
 const MAX_CAMERA_PITCH = 0.75
+const CAMERA_WALL_CLEARANCE = 0.14
+const MIN_BLOCKED_CAMERA_DISTANCE = 0.55
 
 export function resolveMovementInput({
   pressedKeys = [],
@@ -77,6 +79,36 @@ export function shouldRunMovement({
   )
 }
 
+export function resolveCameraPosition({
+  target,
+  desiredPosition,
+  blockers = [],
+  raycaster = new THREE.Raycaster(),
+  direction = new THREE.Vector3(),
+  result = new THREE.Vector3(),
+  clearance = CAMERA_WALL_CLEARANCE,
+}) {
+  result.copy(desiredPosition)
+  if (!blockers.length) return result
+
+  direction.subVectors(desiredPosition, target)
+  const desiredDistance = direction.length()
+  if (desiredDistance <= 0) return result
+
+  direction.normalize()
+  raycaster.set(target, direction)
+  raycaster.near = 0
+  raycaster.far = desiredDistance
+  const obstruction = raycaster.intersectObjects(blockers, false)[0]
+  if (!obstruction) return result
+
+  const resolvedDistance = Math.max(
+    obstruction.distance - Math.max(clearance, 0),
+    MIN_BLOCKED_CAMERA_DISTANCE,
+  )
+  return result.copy(direction).multiplyScalar(resolvedDistance).add(target)
+}
+
 function isFormControl(element) {
   return element instanceof HTMLElement
     && (
@@ -112,6 +144,7 @@ export function createAvatarMovementController({
   camera,
   canvas,
   environment,
+  cameraBlockers = [],
 }) {
   const pressedKeys = new Set()
   const pressedRunKeys = new Set()
@@ -120,6 +153,9 @@ export function createAvatarMovementController({
   const worldMovement = new THREE.Vector2()
   const desiredCameraPosition = new THREE.Vector3()
   const cameraLookTarget = new THREE.Vector3()
+  const unobstructedCameraPosition = new THREE.Vector3()
+  const cameraRayDirection = new THREE.Vector3()
+  const cameraRaycaster = new THREE.Raycaster()
   const smoothedCameraTarget = new THREE.Vector3(
     avatarRoot.position.x,
     avatarRoot.position.y + CAMERA_TARGET_HEIGHT,
@@ -205,13 +241,20 @@ export function createAvatarMovementController({
 
   function getDesiredCameraPosition(target = smoothedCameraTarget) {
     const horizontalDistance = Math.cos(cameraPitch) * cameraDistance
-    desiredCameraPosition.set(
+    unobstructedCameraPosition.set(
       target.x + Math.sin(cameraYaw) * horizontalDistance,
       target.y + Math.sin(cameraPitch) * cameraDistance,
       target.z + Math.cos(cameraYaw) * horizontalDistance,
     )
 
-    return desiredCameraPosition
+    return resolveCameraPosition({
+      target,
+      desiredPosition: unobstructedCameraPosition,
+      blockers: cameraBlockers,
+      raycaster: cameraRaycaster,
+      direction: cameraRayDirection,
+      result: desiredCameraPosition,
+    })
   }
 
   function setCameraTarget(target) {
