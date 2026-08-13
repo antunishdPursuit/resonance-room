@@ -24,6 +24,59 @@ const MAX_CAMERA_DISTANCE = 6
 const MIN_CAMERA_PITCH = -0.15
 const MAX_CAMERA_PITCH = 0.75
 
+export function resolveMovementInput({
+  pressedKeys = [],
+  touchSideways = 0,
+  touchForward = 0,
+}) {
+  let sideways = Number.isFinite(touchSideways) ? touchSideways : 0
+  let forward = Number.isFinite(touchForward) ? touchForward : 0
+
+  pressedKeys.forEach((key) => {
+    const keyboardInput = MOVEMENT_KEYS.get(key)
+    if (!keyboardInput) return
+
+    sideways += keyboardInput[0]
+    forward += keyboardInput[1]
+  })
+
+  const magnitude = Math.hypot(sideways, forward)
+  if (magnitude > 1) {
+    sideways /= magnitude
+    forward /= magnitude
+  }
+
+  return { sideways, forward }
+}
+
+export function shouldStartCameraOrbit({
+  button,
+  pointerType,
+  clientX,
+  canvasLeft,
+  canvasWidth,
+}) {
+  if (button !== 0) return false
+  if (pointerType !== 'touch') return true
+  if (!Number.isFinite(clientX) || !Number.isFinite(canvasWidth) || canvasWidth <= 0) {
+    return false
+  }
+
+  return clientX >= canvasLeft + (canvasWidth / 2)
+}
+
+export function shouldRunMovement({
+  keyboardRunActive = false,
+  touchRunActive = false,
+  touchSideways = 0,
+  touchForward = 0,
+}) {
+  const hasTouchMovement = Math.hypot(touchSideways, touchForward) > 0
+  return Boolean(
+    keyboardRunActive || (touchRunActive && hasTouchMovement),
+  )
+}
+
 function isFormControl(element) {
   return element instanceof HTMLElement
     && (
@@ -63,6 +116,7 @@ export function createAvatarMovementController({
   const pressedKeys = new Set()
   const pressedRunKeys = new Set()
   const movementInput = new THREE.Vector2()
+  const touchMovement = new THREE.Vector2()
   const worldMovement = new THREE.Vector2()
   const desiredCameraPosition = new THREE.Vector3()
   const cameraLookTarget = new THREE.Vector3()
@@ -97,8 +151,10 @@ export function createAvatarMovementController({
   )
   let cameraDistance = startingCameraDistance
   let orbitPointerId = null
+  let orbitPointerType = null
   let lastPointerX = 0
   let lastPointerY = 0
+  let touchRunActive = false
 
   function onKeyDown(event) {
     const isMovementKey = MOVEMENT_KEYS.has(event.code)
@@ -125,6 +181,28 @@ export function createAvatarMovementController({
     pressedRunKeys.clear()
   }
 
+  function clearTouchMovement() {
+    touchMovement.set(0, 0)
+    touchRunActive = false
+  }
+
+  function cancelTouchInput() {
+    clearTouchMovement()
+    if (orbitPointerType !== 'touch' || orbitPointerId === null) return
+
+    const pointerId = orbitPointerId
+    orbitPointerId = null
+    orbitPointerType = null
+    if (canvas.hasPointerCapture?.(pointerId)) {
+      canvas.releasePointerCapture(pointerId)
+    }
+  }
+
+  function clearAllInput() {
+    clearKeys()
+    cancelTouchInput()
+  }
+
   function getDesiredCameraPosition(target = smoothedCameraTarget) {
     const horizontalDistance = Math.cos(cameraPitch) * cameraDistance
     desiredCameraPosition.set(
@@ -146,9 +224,19 @@ export function createAvatarMovementController({
   }
 
   function startOrbit(event) {
-    if (event.button !== 0) return
+    if (orbitPointerId !== null) return
+
+    const bounds = canvas.getBoundingClientRect()
+    if (!shouldStartCameraOrbit({
+      button: event.button,
+      pointerType: event.pointerType,
+      clientX: event.clientX,
+      canvasLeft: bounds.left,
+      canvasWidth: bounds.width,
+    })) return
 
     orbitPointerId = event.pointerId
+    orbitPointerType = event.pointerType
     lastPointerX = event.clientX
     lastPointerY = event.clientY
     canvas.setPointerCapture?.(event.pointerId)
@@ -175,6 +263,7 @@ export function createAvatarMovementController({
 
     canvas.releasePointerCapture?.(event.pointerId)
     orbitPointerId = null
+    orbitPointerType = null
   }
 
   function zoomCamera(event) {
@@ -202,16 +291,14 @@ export function createAvatarMovementController({
   function update(delta) {
     const previousX = avatarRoot.position.x
     const previousZ = avatarRoot.position.z
-    movementInput.set(0, 0)
-    pressedKeys.forEach((key) => {
-      const [sideways, forward] = MOVEMENT_KEYS.get(key)
-      movementInput.x += sideways
-      movementInput.y += forward
+    const resolvedInput = resolveMovementInput({
+      pressedKeys,
+      touchSideways: touchMovement.x,
+      touchForward: touchMovement.y,
     })
+    movementInput.set(resolvedInput.sideways, resolvedInput.forward)
 
     if (movementInput.lengthSq() > 0) {
-      movementInput.normalize()
-
       // Convert input to world space so movement follows the camera view.
       const forwardX = -Math.sin(cameraYaw)
       const forwardZ = -Math.cos(cameraYaw)
@@ -222,7 +309,13 @@ export function createAvatarMovementController({
         (rightZ * movementInput.x) + (forwardZ * movementInput.y),
       ).normalize()
 
-      const speed = pressedRunKeys.size > 0 ? RUN_SPEED : WALK_SPEED
+      const running = shouldRunMovement({
+        keyboardRunActive: pressedRunKeys.size > 0,
+        touchRunActive,
+        touchSideways: touchMovement.x,
+        touchForward: touchMovement.y,
+      })
+      const speed = running ? RUN_SPEED : WALK_SPEED
       const distance = speed * Math.min(delta, 0.05)
       const nextX = avatarRoot.position.x + worldMovement.x * distance
       const nextZ = avatarRoot.position.z + worldMovement.y * distance
@@ -255,13 +348,18 @@ export function createAvatarMovementController({
 
     return {
       moving,
-      running: moving && pressedRunKeys.size > 0,
+      running: moving && shouldRunMovement({
+        keyboardRunActive: pressedRunKeys.size > 0,
+        touchRunActive,
+        touchSideways: touchMovement.x,
+        touchForward: touchMovement.y,
+      }),
     }
   }
 
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('keyup', onKeyUp)
-  window.addEventListener('blur', clearKeys)
+  window.addEventListener('blur', clearAllInput)
   canvas.addEventListener('pointerdown', startOrbit)
   canvas.addEventListener('pointermove', updateOrbit)
   canvas.addEventListener('pointerup', stopOrbit)
@@ -278,19 +376,28 @@ export function createAvatarMovementController({
         z: Number(avatarRoot.position.z.toFixed(3)),
       }
     },
+    setTouchMovement(sideways, forward, running = false) {
+      touchMovement.set(
+        Number.isFinite(sideways) ? sideways : 0,
+        Number.isFinite(forward) ? forward : 0,
+      )
+      touchRunActive = Boolean(running)
+    },
+    cancelTouchInput,
     resetCamera,
     update,
     dispose() {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
-      window.removeEventListener('blur', clearKeys)
+      window.removeEventListener('blur', clearAllInput)
       canvas.removeEventListener('pointerdown', startOrbit)
       canvas.removeEventListener('pointermove', updateOrbit)
       canvas.removeEventListener('pointerup', stopOrbit)
       canvas.removeEventListener('pointercancel', stopOrbit)
       canvas.removeEventListener('wheel', zoomCamera)
-      clearKeys()
+      clearAllInput()
       orbitPointerId = null
+      orbitPointerType = null
     },
   }
 }

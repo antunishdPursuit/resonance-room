@@ -29,6 +29,8 @@ The public demo runs entirely in the browser with a transparent, deterministic 3
 
 - Move: `WASD` or arrow keys
 - Run: hold `Shift` while moving
+- Phone movement: drag the landscape joystick to walk; push it to the outer
+  edge to run; release it to stop
 - Rotate the camera: drag with the primary pointer button
 - Zoom: mouse wheel
 - Restore the starting view: **Reset camera**

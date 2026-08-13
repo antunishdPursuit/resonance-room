@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm'
@@ -66,6 +66,16 @@ import {
   loadBrowserVoices,
   selectPreferredBrowserVoice,
 } from '../voice/browserVoice.js'
+import {
+  ControlsMenu,
+  ExperienceEntryScreen,
+  OrientationGate,
+  VoiceReminder,
+} from './ExperienceUI.jsx'
+import {
+  MobileTouchControls,
+} from './MobileExperience.jsx'
+import { classifyPhoneViewport } from '../ui/mobileControls.js'
 
 const APP_CONFIG = createAppConfig({
   mode: import.meta.env.VITE_APP_MODE,
@@ -74,6 +84,7 @@ const APP_CONFIG = createAppConfig({
 const REQUEST_CHAT_REPLY = createChatClient({ appConfig: APP_CONFIG })
 const BACKEND_VOICE = createBackendVoiceClient({ appConfig: APP_CONFIG })
 const MAX_CHAT_MESSAGES = 20
+const SPEECH_BUBBLE_VISIBLE_MS = 7000
 const WELCOME_PROMPT = APP_CONFIG.usesBackend
   ? 'Hi, I\u2019m Esme. What kind of songs do you like? You can name a genre, artist, mood, or activity.'
   : 'Hi, I\u2019m Esme. Pick a vibe below and I\u2019ll find six songs for you.'
@@ -84,6 +95,20 @@ const COLLISION_DEBUG_ENABLED = import.meta.env.DEV
   && PAGE_PARAMETERS.get('debugCollisions') === '1'
 const ANIMATION_PREVIEW_ENABLED = import.meta.env.DEV
   && PAGE_PARAMETERS.get('testAnimations') === '1'
+
+function readPhoneViewport() {
+  const mobileUserAgent = navigator.userAgentData?.mobile === true
+    || /Android|iPhone|iPod|Mobile/i.test(navigator.userAgent)
+
+  return classifyPhoneViewport({
+    width: window.innerWidth,
+    height: window.innerHeight,
+    coarsePointer: window.matchMedia('(pointer: coarse)').matches,
+    touchCapable: navigator.maxTouchPoints > 0,
+    mobileUserAgent,
+  })
+}
+
 export default function AvatarScene() {
   const canvasRef  = useRef(null)
   const vrmRef     = useRef(null)
@@ -96,12 +121,16 @@ export default function AvatarScene() {
   const analyserDataRef = useRef(null)
   const classroomInspectorRef = useRef(null)
   const recommendationBoardRef = useRef(null)
+  const movementControllerRef = useRef(null)
   const resetCameraRef = useRef(null)
   const animationPreviewRef = useRef(null)
   const animationControllerRef = useRef(null)
   const openingGreetingActionRef = useRef(null)
   const boardInteractionActionRef = useRef(null)
   const openingGreetingPlayedRef = useRef(false)
+  const openingTimersRef = useRef({ fade: null, hide: null })
+  const speechBubbleVisibleRef = useRef(false)
+  const speechBubbleTimerRef = useRef(null)
   const [messages,      setMessages]      = useState([])
   const [loading,       setLoading]       = useState(false)
   const [pickedSongs,   setPickedSongs]   = useState([])
@@ -111,7 +140,15 @@ export default function AvatarScene() {
   const [voiceEnabled,       setVoiceEnabled]       = useState(false)
   const [useElevenLabs,      setUseElevenLabs]      = useState(false)
   const [elevenLabsAvailable, setElevenLabsAvailable] = useState(false)
-  const [transcriptOpen,     setTranscriptOpen]     = useState(true)
+  const [phoneViewport, setPhoneViewport] = useState(readPhoneViewport)
+  const [entryStarted, setEntryStarted] = useState(false)
+  const [controlsOpen, setControlsOpen] = useState(false)
+  const [vibePickerOpen, setVibePickerOpen] = useState(false)
+  const [selectedVibe, setSelectedVibe] = useState(null)
+  const [voiceReminderShown, setVoiceReminderShown] = useState(false)
+  const [voiceReminderVisible, setVoiceReminderVisible] = useState(false)
+  const [likedPanelOpen, setLikedPanelOpen] = useState(false)
+  const [transcriptOpen, setTranscriptOpen] = useState(false)
   const [inspectedClassroomMesh, setInspectedClassroomMesh] = useState(null)
   const [classroomInventory, setClassroomInventory] = useState([])
   const [classroomCollisionZones, setClassroomCollisionZones] = useState([])
@@ -130,6 +167,19 @@ export default function AvatarScene() {
   const pickedSongsRef = useRef([])
   const voiceEnabledRef  = useRef(false)
   const useElevenlabsRef = useRef(false)
+  const isPhoneExperience = phoneViewport.isPhone
+  const isPhoneLandscape = phoneViewport.isLandscape
+  const experienceAssetsReady = classroomReady
+    && openingGreetingReady
+    && movementReady
+  const mobileControlsActive = isPhoneExperience
+    && isPhoneLandscape
+    && entryStarted
+    && !loaderVisible
+    && !controlsOpen
+    && !transcriptOpen
+    && !likedPanelOpen
+    && !vibePickerOpen
 
   useEffect(() => { messagesRef.current      = messages      }, [messages])
   useEffect(() => { voiceEnabledRef.current  = voiceEnabled  }, [voiceEnabled])
@@ -138,6 +188,24 @@ export default function AvatarScene() {
     pickedSongsRef.current = pickedSongs
     recommendationBoardRef.current?.setSelectedSongs(pickedSongs)
   }, [pickedSongs])
+
+  useEffect(() => {
+    const coarsePointerQuery = window.matchMedia('(pointer: coarse)')
+    const updatePhoneViewport = () => setPhoneViewport(readPhoneViewport())
+
+    window.addEventListener('resize', updatePhoneViewport)
+    coarsePointerQuery.addEventListener?.('change', updatePhoneViewport)
+
+    return () => {
+      window.removeEventListener('resize', updatePhoneViewport)
+      coarsePointerQuery.removeEventListener?.('change', updatePhoneViewport)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (mobileControlsActive) return
+    movementControllerRef.current?.cancelTouchInput()
+  }, [mobileControlsActive])
 
   const chatLimitReached = messages.length >= MAX_CHAT_MESSAGES
   const latestEsmeMessage = messages.slice().reverse().find(message => message.role === 'assistant')
@@ -188,16 +256,34 @@ export default function AvatarScene() {
       content: `${tasteProfile.summary} I’ll keep that in mind for your next picks.`,
       kind: 'profile',
     }])
+    showSpeechBubbleTemporarily()
     speak(tasteProfile.summary)
   }, [pickedSongs, profileBuilt])
 
-  useEffect(() => {
+  function clearOpeningTimers() {
+    clearTimeout(openingTimersRef.current.fade)
+    clearTimeout(openingTimersRef.current.hide)
+    openingTimersRef.current = { fade: null, hide: null }
+  }
+
+  function showSpeechBubbleTemporarily() {
+    clearTimeout(speechBubbleTimerRef.current)
+    speechBubbleVisibleRef.current = true
+    speechBubbleTimerRef.current = setTimeout(() => {
+      speechBubbleVisibleRef.current = false
+      if (speechBubbleRef.current) {
+        speechBubbleRef.current.dataset.visible = 'false'
+      }
+    }, SPEECH_BUBBLE_VISIBLE_MS)
+  }
+
+  function beginOpeningExperience() {
     if (!shouldStartOpeningGreeting({
       classroomReady,
       greetingReady: openingGreetingReady,
       greetingPlayed: openingGreetingPlayedRef.current,
     })) {
-      return
+      return false
     }
 
     openingGreetingPlayedRef.current = true
@@ -208,19 +294,34 @@ export default function AvatarScene() {
       )
     }
     speak(WELCOME_PROMPT)
-    const fadeTimer = setTimeout(
+    clearOpeningTimers()
+    openingTimersRef.current.fade = setTimeout(
       () => setLoaderFading(true),
       OPENING_GREETING_REVEAL_DELAY_MS,
     )
-    const hideTimer = setTimeout(
-      () => setLoaderVisible(false),
-      OPENING_GREETING_REVEAL_DELAY_MS + OPENING_FADE_DURATION_MS,
-    )
-    return () => {
-      clearTimeout(fadeTimer)
-      clearTimeout(hideTimer)
+    openingTimersRef.current.hide = setTimeout(() => {
+      setLoaderVisible(false)
+      showSpeechBubbleTemporarily()
+    }, OPENING_GREETING_REVEAL_DELAY_MS + OPENING_FADE_DURATION_MS)
+    return true
+  }
+
+  function handleReady() {
+    if (
+      !experienceAssetsReady
+      || (isPhoneExperience && !isPhoneLandscape)
+      || entryStarted
+    ) return
+
+    if (beginOpeningExperience()) {
+      setEntryStarted(true)
     }
-  }, [classroomReady, openingGreetingReady])
+  }
+
+  useEffect(() => () => {
+    clearOpeningTimers()
+    clearTimeout(speechBubbleTimerRef.current)
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -252,6 +353,7 @@ export default function AvatarScene() {
         canvas,
         environment: movementEnvironment,
       })
+      movementControllerRef.current = movementController
       resetCameraRef.current = movementController.resetCamera
       if (COLLISION_DEBUG_ENABLED) {
         window.__ESME_MOVEMENT__ = movementController
@@ -626,7 +728,9 @@ export default function AvatarScene() {
         '--speech-bubble-tail-x',
         `${position.tailOffset}px`,
       )
-      bubble.dataset.visible = String(position.visible)
+      bubble.dataset.visible = String(
+        speechBubbleVisibleRef.current && position.visible,
+      )
     }
 
     function animate(timestamp) {
@@ -700,6 +804,7 @@ export default function AvatarScene() {
       classroomInspectionCamera?.dispose()
       movementController?.dispose()
       movementController = null
+      movementControllerRef.current = null
       occlusionController?.dispose()
       occlusionController = null
       resetCameraRef.current = null
@@ -780,6 +885,7 @@ export default function AvatarScene() {
         content: reply,
         songs:   data.recommendations ?? null,
       }])
+      showSpeechBubbleTemporarily()
       speak(reply)
     } catch (err) {
       console.error('Chat error:', err)
@@ -788,6 +894,7 @@ export default function AvatarScene() {
         content: "I couldn't prepare recommendations right now. Please try again.",
         kind: 'error',
       }])
+      showSpeechBubbleTemporarily()
     } finally {
       setLoading(false)
     }
@@ -825,28 +932,118 @@ export default function AvatarScene() {
     return isSongSelected(pickedSongs, song)
   }
 
+  const handleMobileMove = useCallback(({ sideways, forward, running }) => {
+    movementControllerRef.current?.setTouchMovement(
+      sideways,
+      forward,
+      running,
+    )
+  }, [])
+
+  function toggleTranscriptPanel() {
+    const nextOpen = !transcriptOpen
+    setTranscriptOpen(nextOpen)
+    if (nextOpen) {
+      setLikedPanelOpen(false)
+      setControlsOpen(false)
+      setVibePickerOpen(false)
+    }
+  }
+
+  function toggleLikedPanel() {
+    const nextOpen = !likedPanelOpen
+    setLikedPanelOpen(nextOpen)
+    if (nextOpen) {
+      setTranscriptOpen(false)
+      setControlsOpen(false)
+      setVibePickerOpen(false)
+    }
+  }
+
+  function handleVibeSelection(vibe) {
+    setSelectedVibe(vibe.label)
+    setVibePickerOpen(false)
+
+    if (!voiceEnabledRef.current && !voiceReminderShown) {
+      setVoiceReminderShown(true)
+      setVoiceReminderVisible(true)
+    }
+
+    sendMessage(vibe.label)
+  }
+
+  function openControls() {
+    setVoiceReminderVisible(false)
+    setTranscriptOpen(false)
+    setLikedPanelOpen(false)
+    setVibePickerOpen(false)
+    setControlsOpen(true)
+  }
+
+  function toggleControlsMenu() {
+    if (controlsOpen) {
+      setControlsOpen(false)
+      return
+    }
+    openControls()
+  }
+
+  function toggleVibePicker() {
+    const nextOpen = !vibePickerOpen
+    setVibePickerOpen(nextOpen)
+    if (nextOpen) {
+      setControlsOpen(false)
+      setTranscriptOpen(false)
+      setLikedPanelOpen(false)
+    }
+  }
+
+  function resetCamera(event) {
+    resetCameraRef.current?.()
+    event?.currentTarget?.blur()
+  }
+
+  const gameplayUiVisible = entryStarted
+    && !loaderVisible
+    && (!isPhoneExperience || isPhoneLandscape)
+
   return (
-    <main className="esme-app">
+    <main
+      className="esme-app"
+      data-phone={isPhoneExperience}
+      data-phone-landscape={isPhoneLandscape}
+    >
       <canvas ref={canvasRef} className="esme-canvas" />
 
       {/* Loading screen */}
       {loaderVisible && (
-        <div className="loading-screen" data-fading={loaderFading}>
-          <div className="loading-screen__ring" />
+        <ExperienceEntryScreen
+          assetsReady={experienceAssetsReady}
+          entryStarted={entryStarted}
+          fading={loaderFading}
+          isPhone={isPhoneExperience}
+          isLandscape={isPhoneLandscape}
+          isStatic={!APP_CONFIG.usesBackend}
+          onReady={handleReady}
+        />
+      )}
 
-          <div className="loading-screen__copy">
-            <div className="loading-screen__title">
-              Esme
-            </div>
-            <div className="loading-screen__status">
-              loading your music experience...
-            </div>
-          </div>
-        </div>
+      {isPhoneExperience
+        && entryStarted
+        && !isPhoneLandscape
+        && !loaderVisible
+        && <OrientationGate />}
+
+      {mobileControlsActive && (
+        <MobileTouchControls onMove={handleMobileMove} />
       )}
 
       {/* Picked songs panel */}
-      <section className="liked-panel" aria-label="Liked songs">
+      <section
+        className="liked-panel"
+        aria-label="Liked songs"
+        data-open={likedPanelOpen}
+      >
         <div className="panel-heading">
           Liked Songs ({pickedSongs.length})
         </div>
@@ -1156,117 +1353,125 @@ export default function AvatarScene() {
         </aside>
       )}
 
-      {/* Controls */}
-      {chatLimitReached && (
-        <div
-          className="chat-limit-notice"
-          data-tone="warning"
-          role="status"
-          aria-live="polite"
-        >
-          You've reached the 20-message limit for this chat. Start a new chat to continue.
-        </div>
-      )}
+      {gameplayUiVisible && (
+        <>
+          <button className="mode-badge" onClick={openControls}>
+            {APP_CONFIG.usesBackend ? 'Backend mode' : 'Static demo'}
+          </button>
 
-      <section className="control-dock" aria-label="Talk to Esme">
+          <button
+            className="button button--secondary controls-trigger"
+            aria-expanded={controlsOpen}
+            onClick={toggleControlsMenu}
+          >
+            Controls
+          </button>
 
-        <button
-          className={`button button--secondary ${voiceEnabled ? 'button--active' : ''}`}
-          onClick={() => setVoiceEnabled(v => !v)}
-          title={voiceEnabled ? 'Disable voice' : 'Enable voice'}
-        >
-          {voiceEnabled ? 'Voice On' : 'Voice Off'}
-        </button>
-
-        <button
-          className={`button button--secondary ${useElevenLabs && elevenLabsAvailable ? 'button--accent' : ''}`}
-          onClick={() => elevenLabsAvailable && setUseElevenLabs(v => !v)}
-          disabled={!elevenLabsAvailable}
-          title={!APP_CONFIG.usesBackend
-            ? 'Browser voice is used in static mode'
-            : !elevenLabsAvailable
-              ? 'ElevenLabs is unavailable from the backend'
-              : useElevenLabs
-                ? 'Switch to browser voice'
-                : 'Switch to ElevenLabs voice'}
-        >
-          {useElevenLabs && elevenLabsAvailable ? 'ElevenLabs voice' : 'Browser voice'}
-        </button>
-
-        <button
-          className="button button--secondary"
-          aria-expanded={transcriptOpen}
-          onClick={() => setTranscriptOpen(value => !value)}
-        >
-          {transcriptOpen ? 'Hide transcript' : 'Show transcript'}
-        </button>
-
-        <button
-          className="button button--secondary"
-          disabled={!movementReady}
-          title="Move with WASD or arrow keys. Hold Shift to run."
-          onClick={(event) => {
-            resetCameraRef.current?.()
-            event.currentTarget.blur()
-          }}
-        >
-          Reset camera
-        </button>
-
-        {APP_CONFIG.usesBackend ? (
-          <input
-            className="composer-input"
-            ref={inputRef}
-            onKeyDown={handleKeyDown}
-            placeholder={chatLimitReached ? 'Start a new chat to continue' : loading ? 'Esme is thinking...' : 'Say something to Esme...'}
-            disabled={loading || chatLimitReached}
+          <ControlsMenu
+            isPhone={isPhoneExperience}
+            isStatic={!APP_CONFIG.usesBackend}
+            movementReady={movementReady}
+            onClose={() => setControlsOpen(false)}
+            onResetCamera={resetCamera}
+            onToggleVoice={() => {
+              setVoiceEnabled(value => !value)
+              setVoiceReminderVisible(false)
+            }}
+            open={controlsOpen}
+            voiceEnabled={voiceEnabled}
           />
-        ) : (
-          <div className="vibe-picker" role="group" aria-label="Choose a music vibe">
-            <span className="vibe-picker__label">Choose a vibe</span>
-            {chatLimitReached ? (
-              <button className="button button--primary" onClick={startNewChat}>
-                Start new chat
-              </button>
-            ) : (
-              GUIDED_VIBES.map(vibe => (
-                <button
-                  key={vibe.id}
-                  className="button button--secondary button--vibe"
-                  disabled={loading}
-                  onClick={() => sendMessage(vibe.label)}
-                >
-                  {vibe.label}
-                </button>
-              ))
-            )}
-          </div>
-        )}
 
-        <div className="control-dock__actions">
-          {APP_CONFIG.usesBackend && (
-            chatLimitReached ? (
-              <button className="button button--primary" onClick={startNewChat}>
-                Start new chat
-              </button>
-            ) : (
-              <button className="button button--primary" onClick={handleSend} disabled={loading}>
-                {loading ? '...' : 'Send'}
-              </button>
-            )
+          {voiceReminderVisible && (
+            <VoiceReminder
+              onDismiss={() => setVoiceReminderVisible(false)}
+              onOpenControls={openControls}
+            />
           )}
 
-          <p className="control-dock__help">
-            WASD or arrow keys to move · Hold Shift to run · Drag to rotate · Scroll to zoom
-          </p>
-        </div>
+          {chatLimitReached && (
+            <div
+              className="chat-limit-notice"
+              data-tone="warning"
+              role="status"
+              aria-live="polite"
+            >
+              You've reached the 20-message limit for this chat. Start a new chat to continue.
+            </div>
+          )}
 
-        <p className="control-dock__fallback-note" data-tone="info" role="note">
-          {APP_CONFIG.usesBackend
-            ? 'Backend mode: Recommendations and optional ElevenLabs speech use FastAPI. Browser speech remains available.'
-            : 'Static demo: Recommendations use the built-in 36-song catalog and voice stays in the browser.'}
-        </p>
-      </section>
+          <section className="gameplay-actions" aria-label="Talk to Esme">
+            {APP_CONFIG.usesBackend ? (
+              <div className="composer">
+                <input
+                  className="composer-input"
+                  ref={inputRef}
+                  onKeyDown={handleKeyDown}
+                  placeholder={chatLimitReached ? 'Start a new chat to continue' : loading ? 'Esme is thinking...' : 'Say something to Esme...'}
+                  disabled={loading || chatLimitReached}
+                />
+                {chatLimitReached ? (
+                  <button className="button button--primary" onClick={startNewChat}>
+                    Start new chat
+                  </button>
+                ) : (
+                  <button className="button button--primary" onClick={handleSend} disabled={loading}>
+                    {loading ? 'Thinking…' : 'Send'}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="vibe-control">
+                {chatLimitReached ? (
+                  <button className="button button--primary" onClick={startNewChat}>
+                    Start new chat
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      className="button button--primary vibe-control__trigger"
+                      aria-expanded={vibePickerOpen}
+                      onClick={toggleVibePicker}
+                    >
+                      {selectedVibe ? `Vibe: ${selectedVibe}` : 'Choose a vibe'}
+                    </button>
+                    {vibePickerOpen && (
+                      <div className="vibe-tray" role="group" aria-label="Choose a music vibe">
+                        {GUIDED_VIBES.map(vibe => (
+                          <button
+                            key={vibe.id}
+                            className="button button--secondary button--vibe"
+                            disabled={loading}
+                            onClick={() => handleVibeSelection(vibe)}
+                          >
+                            {vibe.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            <div className="gameplay-actions__utilities">
+              <button
+                className="button button--secondary button--compact"
+                aria-expanded={transcriptOpen}
+                onClick={toggleTranscriptPanel}
+              >
+                Transcript
+              </button>
+              <button
+                className="button button--secondary button--compact"
+                aria-expanded={likedPanelOpen}
+                onClick={toggleLikedPanel}
+              >
+                Liked ({pickedSongs.length})
+              </button>
+            </div>
+          </section>
+        </>
+      )}
     </main>
   )
 }
