@@ -16,6 +16,7 @@ The public demo runs entirely in the browser with a transparent, deterministic 3
 - Optional real-song discovery through Last.fm in local backend mode
 - A movable VRM avatar with walking, running, idle, greeting, facial, and lip-sync behavior
 - Collision-aware movement through a mapped 3D classroom
+- A lightweight sunlit school backdrop with a courtyard wing and suggested hallway
 - Orbit, zoom, follow, and reset camera controls
 - Camera occlusion fading when classroom furniture blocks Esme
 - A response bubble anchored to the avatar with an accessible live-region mirror
@@ -29,6 +30,8 @@ The public demo runs entirely in the browser with a transparent, deterministic 3
 
 - Move: `WASD` or arrow keys
 - Run: hold `Shift` while moving
+- Phone movement: drag the landscape joystick to walk; push it to the outer
+  edge to run; release it to stop
 - Rotate the camera: drag with the primary pointer button
 - Zoom: mouse wheel
 - Restore the starting view: **Reset camera**
