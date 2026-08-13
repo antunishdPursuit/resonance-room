@@ -2,76 +2,69 @@
 
 [Try Resonance Room live](https://resonance-room-web.onrender.com/)
 
-Resonance Room is an interactive 3D music-discovery experience. Talk with Esme inside a virtual classroom, receive six song recommendations, and like songs from the blackboard or the keyboard-accessible transcript.
+Resonance Room is an interactive 3D music-discovery experience. Explore a virtual classroom, choose a vibe, receive six song recommendations, and keep a liked list for the current session.
 
-The public demo runs entirely in the browser with a transparent, deterministic 36-song catalog. Its core experience does not require a backend, provider key, or paid API. An optional FastAPI mode supports Anthropic, Last.fm, and ElevenLabs during local development.
+The public demo runs entirely in the browser with a transparent, deterministic 36-song catalog. It does not require an account, backend, provider key, or paid API.
+
+> **Character rename:** Riri is the approved successor to Esme. The current deployed build and source still display Esme until that rename is implemented and verified.
+
+## Why It Exists
+
+Music recommenders often hide their logic behind a search box or an opaque feed. Resonance Room makes a small recommendation system visible inside a spatial experience: the visitor chooses a current mood or activity, sees a bounded set of results, and can inspect the system's limitations.
 
 ## What You Can Do
 
-- Six guided vibe choices in the public static build: Chill, Focus, Energy, Feel-good, Moody, and Surprise me
-- Six deterministic recommendations from a 36-song stored catalog
-- Fresh recommendation sets when a vibe repeats and unused matches remain
-- A session-only taste summary after five liked static-catalog songs
-- Natural-language music requests in optional local backend mode
-- Optional real-song discovery through Last.fm in local backend mode
-- A movable VRM avatar with walking, running, idle, greeting, facial, and lip-sync behavior
-- Collision-aware movement through a mapped 3D classroom
-- A lightweight sunlit school backdrop with a courtyard wing and suggested hallway
-- Orbit, zoom, follow, and reset camera controls
-- Camera occlusion fading when classroom furniture blocks Esme
-- A response bubble anchored to the avatar with an accessible live-region mirror
-- A collapsible conversation transcript and a 20-message context limit
-- A selectable six-song classroom board synchronized with transcript heart controls
-- A liked-song panel with safe external links when a provider supplies them
-- Browser speech in the public build and optional ElevenLabs speech in backend mode
-- Automated backend, frontend, dependency, and production-build checks
+- Enter through a shared loading and Ready experience that explains the controls
+- Choose Chill, Focus, Energy, Feel-good, Moody, or Surprise me
+- Receive six deterministic recommendations from a 36-song stored catalog
+- Get a fresh set when a vibe repeats and unused matches remain
+- Like songs and receive a session-only taste summary after five compatible likes
+- Walk or run through a collision-aware classroom
+- Orbit, zoom, follow, and reset the camera
+- Review a timed response bubble and retained session transcript
+- Enable optional browser speech from Controls
+- Use landscape touch movement and camera controls on a phone
+
+The surrounding hallway, courtyard wing, and school exterior provide visual context. They are not a fully explorable campus.
+
+## How It Works
+
+```text
+Visitor
+  -> React + Three.js classroom
+  -> one of six guided vibe profiles
+  -> deterministic scoring over a bundled 36-song catalog
+  -> six songs, response, transcript, and liked-song panel
+  -> optional browser speech
+```
+
+The public static mode does not send chat or speech requests to FastAPI. The repository retains an optional local backend mode for Anthropic-assisted intent extraction, Last.fm discovery, a separate 18-song Python fallback, and ElevenLabs speech.
+
+Read [How the Music Recommender Works](docs/music-recommender.md) for the scoring logic, catalog boundary, and known biases.
 
 ## Controls
 
+### Desktop
+
 - Move: `WASD` or arrow keys
 - Run: hold `Shift` while moving
-- Phone movement: drag the landscape joystick to walk; push it to the outer
-  edge to run; release it to stop
-- Rotate the camera: drag with the primary pointer button
+- Look around: drag with the primary pointer button
 - Zoom: mouse wheel
-- Restore the starting view: **Reset camera**
+- Restore the starting view: **Reset camera** in Controls
 
-Movement does not activate while a form control is focused.
+### Phone
 
-## Project Lineage
+- Rotate the phone to landscape before entering
+- Move: drag the left joystick
+- Run: push the joystick into its outer ring
+- Look around: drag the right side of the classroom
+- Release the joystick to stop
 
-Resonance Room grew from the music recommender in [applied-ai-system-project](https://github.com/antunishdPursuit/applied-ai-system-project). The original repository preserves the AI 110 project and its reliability pass. This repository is the standalone product line for continued interaction, movement, accessibility, and recommendation work.
-
-The deterministic scoring engine remains part of the application because it provides an auditable fallback and exposes the tradeoffs behind content-based recommendation.
-
-## Architecture
-
-The application has two explicit modes:
-
-```text
-Public static mode
-Visitor
-  -> React + Three.js classroom
-  -> guided vibe matching + deterministic scoring
-  -> bundled 36-song catalog
-  -> response, six-song board, transcript, and liked-song panel
-  -> browser speech
-
-Optional local backend mode
-Visitor
-  -> React + Three.js classroom
-  -> FastAPI /chat
-      -> Anthropic + Last.fm when configured
-      -> Python deterministic fallback when provider credentials are unavailable
-  -> optional FastAPI /tts -> ElevenLabs
-  -> browser speech if ElevenLabs is unavailable
-```
-
-The public static mode does not send chat or speech requests to FastAPI. Read the detailed [architecture](docs/architecture.md), [fallback recommender explanation](docs/fallback-recommender.md), [fallback model card](docs/fallback-model-card.md), [evaluation](docs/fallback-evaluation.md), and [testing record](docs/testing.md).
+Movement does not activate while a form control is focused. Browser device emulation helps with responsive review but does not replace real-phone testing.
 
 ## Technology
 
-### Frontend
+### Public frontend
 
 - React 19
 - Three.js
@@ -81,19 +74,17 @@ The public static mode does not send chat or speech requests to FastAPI. Read th
 
 ### Optional local backend
 
-- Python
-- FastAPI
+- Python and FastAPI
 - Anthropic SDK
-- HTTPX
 - Last.fm API
 - ElevenLabs API
-- Deterministic content-based scoring fallback
+- Deterministic Python fallback recommender
 
-## Frontend-Only Quick Start
+## Run Locally
 
-### Prerequisites
+### Frontend-only mode
 
-- Node.js 24, matching the continuous-integration build
+Node.js 24 matches the continuous-integration environment.
 
 From `web`:
 
@@ -102,16 +93,11 @@ npm.cmd ci
 npm.cmd run dev -- --host 127.0.0.1 --port 5173
 ```
 
-Open `http://127.0.0.1:5173/`.
+Open `http://127.0.0.1:5173/`. Static mode is the default and requires no environment file.
 
-No backend or environment file is required. Static mode is the default.
-Voice starts off, and the accessible transcript starts open.
+### Optional backend mode
 
-## Optional Local Backend Mode
-
-Use this mode to test FastAPI, provider-backed recommendations, or ElevenLabs. Python 3.11 is the continuous-integration version.
-
-### 1. Create the Python environment
+Python 3.11 matches the continuous-integration environment.
 
 From the repository root:
 
@@ -120,14 +106,6 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --require-hashes -r requirements.lock
 ```
-
-For macOS or Linux, activate the environment with:
-
-```bash
-source .venv/bin/activate
-```
-
-### 2. Configure optional providers
 
 Create `backend/.env`:
 
@@ -138,19 +116,11 @@ ELEVENLABS_API_KEY=
 ELEVENLABS_VOICE_ID=
 ```
 
-Do not commit this file. Without Anthropic or Last.fm credentials, FastAPI uses the Python fallback. Without ElevenLabs credentials, the frontend can use browser speech.
-
-### 3. Start FastAPI
-
-From `backend`:
+Start FastAPI from `backend`:
 
 ```powershell
 python -m uvicorn main:app --host 127.0.0.1 --port 8001
 ```
-
-The health endpoint is `http://127.0.0.1:8001/health`.
-
-### 4. Select backend mode in the frontend
 
 Create `web/.env.local`:
 
@@ -159,29 +129,7 @@ VITE_APP_MODE=backend
 VITE_API_BASE_URL=http://127.0.0.1:8001
 ```
 
-Then start or restart Vite from `web`:
-
-```powershell
-npm.cmd run dev -- --host 127.0.0.1 --port 5173
-```
-
-Delete `web/.env.local`, or set `VITE_APP_MODE=static`, before testing the frontend-only release again. Stop both development servers after testing and verify that ports `5173` and `8001` are closed.
-
-## Development Views
-
-These query parameters work only in the Vite development build:
-
-- `?inspectClassroom=1` shows classroom mesh and collision inspection.
-- `?debugCollisions=1` shows movement collision zones.
-- `?testAnimations=1` shows animation preview controls.
-
-They are excluded from the production JavaScript behavior.
-
-## Deployment
-
-The root `render.yaml` defines one Render static site named `resonance-room-web`. Render builds `web` with `npm ci && npm run build`, publishes `web/dist`, and sets `VITE_APP_MODE=static`. No backend service, secret, database, or persistent disk is required for this release.
-
-Automatic deployment waits for GitHub checks to pass. The optional FastAPI source remains in the repository for local development and a possible future backend release.
+Then start or restart Vite. Remove `web/.env.local`, or set `VITE_APP_MODE=static`, before testing the public release path again. Stop both servers after testing and verify that ports `5173` and `8001` are closed.
 
 ## Verification
 
@@ -200,28 +148,36 @@ npm.cmd run build
 npm.cmd audit --audit-level=low
 ```
 
-Provider-dependent Anthropic, Last.fm, and ElevenLabs behavior requires valid local credentials and must be verified separately from the public static path.
+Automated checks do not prove visual quality, recommendation usefulness, real-phone behavior, provider availability, or a successful public deployment. Verify those paths separately when they are in scope.
 
-## Recommendation Boundaries
+## Privacy and Data
 
-- The bundled static catalog contains only 36 synthetic records.
-- Static mode offers six preset vibes instead of open-ended chat.
-- Static recommendations use the selected vibe and prior session results; backend mode receives a bounded conversation history.
-- Exact genre and mood labels can outweigh otherwise similar audio characteristics.
-- The liked-song list has no fixed maximum.
-- Five compatible liked songs create one session-only taste summary in static mode; backend mode sends its existing automatic profile request.
+- The public static mode does not require an account.
+- Likes, recent recommendations, transcript messages, and the taste summary remain in the current browser session and are not persisted by the app.
+- Browser speech stays on the visitor's browser-supported speech path.
+- Optional backend providers receive only the data sent while backend mode is explicitly configured.
+
+## Current Limits
+
+- The static catalog contains 36 synthetic records and six preset vibes.
+- Exact genre and mood labels can outweigh otherwise similar audio attributes.
+- The catalog represents a narrow range of music and cultural contexts.
+- Static likes change response wording after five compatible selections but do not retrain the ranking formula.
 - The conversation context is limited to 20 messages.
-- Last.fm results depend on community-generated tags and provider availability.
+- The campus backdrop is not an open-world environment.
+- Real-phone touch review remains a separate release gate from browser emulation.
+- Provider-backed behavior requires local credentials and separate verification.
 
-See the [fallback model card](docs/fallback-model-card.md) for evaluation evidence and bias details.
+## Project Lineage
 
-## Third-Party Assets
+Resonance Room grew from the music recommender in [applied-ai-system-project](https://github.com/antunishdPursuit/applied-ai-system-project). The original repository preserves the AI 110 course project. This repository is the active standalone product line for continued interaction, accessibility, environment, and recommendation work.
 
-- Movement, opening, idle, and contextual avatar motion use the [Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) by Quaternius. `UAL1_Standard.glb` is distributed under CC0 1.0, and the repository includes its license text.
+## Assets and Acknowledgments
+
+- Character movement uses the [Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) by Quaternius under CC0 1.0. The repository includes its license text.
 - The classroom source is recorded in this [Fab listing](https://www.fab.com/listings/a92bc730-55a9-46e5-ae25-4dcd9e6a08f8).
-- `Esme.vrm` is the VRoid Project's [AvatarSample_B](https://hub.vroid.com/en/characters/7939147878897061040/models/2292219474373673889). Its VRoid Hub conditions allow avatar use, commercial use, redistribution, and alterations without attribution. The model is not CC0.
-- No standalone VRMA motion files are included in the release.
+- The bundled `Esme.vrm` file is the VRoid Project's [AvatarSample_B](https://hub.vroid.com/en/characters/7939147878897061040/models/2292219474373673889). The product name does not replace the source model's identity or license terms.
 
 ## Status
 
-Resonance Room is live and feature-complete for its current frontend-only scope. The public Render release has passed its deployment and smoke-test checks. The optional FastAPI backend remains available for local development and possible future deployment work.
+The frontend-only demo is live. The next approved product work is a restrained road treatment, the Esme-to-Riri character rename, and real-phone verification. The optional FastAPI mode remains local-development functionality.
