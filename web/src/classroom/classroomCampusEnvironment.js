@@ -6,6 +6,16 @@ export const CAMPUS_ENVIRONMENT_PALETTE = Object.freeze({
   skyLow: 0xffddad,
   sun: 0xfff0bd,
   grass: 0x526b55,
+  road: 0x625a66,
+  roadEdge: 0xb9a9a3,
+  roadMarking: 0xffe4a6,
+  crosswalk: 0xf1ded4,
+  lampPost: 0x4b3544,
+  lampGlow: 0xffc987,
+  treeTrunk: 0x76513f,
+  treeLeaf: 0x5f765d,
+  shrub: 0x718769,
+  bench: 0x8a5363,
   building: 0xd8b7a8,
   buildingShadow: 0x6b4554,
   trim: 0x7a4659,
@@ -23,6 +33,9 @@ export const CAMPUS_ENVIRONMENT_PALETTE = Object.freeze({
 
 const BUILDING_WINDOW_COLUMNS = 8
 const BUILDING_WINDOW_ROWS = 3
+const ROAD_DASH_COUNT = 7
+const CROSSWALK_STRIPE_COUNT = 6
+const ROAD_LAMP_COUNT = 4
 
 function addMesh(group, geometry, material, {
   name,
@@ -195,6 +208,290 @@ function createCourtyardSchool(group, placement, materials, geometries) {
   }
   windows.instanceMatrix.needsUpdate = true
   group.add(windows)
+}
+
+function createCampusRoad(group, placement, materials, geometries) {
+  const standardMaterial = (color, options = {}) => {
+    const value = new THREE.MeshStandardMaterial({
+      color,
+      roughness: 0.9,
+      metalness: 0,
+      ...options,
+    })
+    materials.add(value)
+    return value
+  }
+  const roadMaterial = standardMaterial(CAMPUS_ENVIRONMENT_PALETTE.road)
+  const edgeMaterial = standardMaterial(CAMPUS_ENVIRONMENT_PALETTE.roadEdge)
+  const markingMaterial = standardMaterial(CAMPUS_ENVIRONMENT_PALETTE.roadMarking, {
+    emissive: CAMPUS_ENVIRONMENT_PALETTE.roadMarking,
+    emissiveIntensity: 0.05,
+  })
+  const crosswalkMaterial = standardMaterial(CAMPUS_ENVIRONMENT_PALETTE.crosswalk)
+  const lampPostMaterial = standardMaterial(CAMPUS_ENVIRONMENT_PALETTE.lampPost, {
+    roughness: 0.65,
+  })
+  const lampGlowMaterial = standardMaterial(CAMPUS_ENVIRONMENT_PALETTE.lampGlow, {
+    emissive: CAMPUS_ENVIRONMENT_PALETTE.lampGlow,
+    emissiveIntensity: 0.7,
+  })
+
+  const roadGeometry = new THREE.BoxGeometry(
+    placement.road.width,
+    0.08,
+    placement.road.length,
+  )
+  geometries.add(roadGeometry)
+  addMesh(group, roadGeometry, roadMaterial, {
+    name: 'Campus access road',
+    position: [
+      placement.road.centerX,
+      placement.road.baseY,
+      placement.road.centerZ,
+    ],
+  })
+
+  const sidewalkGeometry = new THREE.BoxGeometry(
+    placement.road.sidewalkWidth,
+    0.14,
+    placement.road.length,
+  )
+  geometries.add(sidewalkGeometry)
+  const sidewalks = new THREE.InstancedMesh(sidewalkGeometry, edgeMaterial, 2)
+  sidewalks.name = 'Roadside sidewalks'
+  const sidewalkMatrix = new THREE.Matrix4()
+  placement.road.sidewalkX.forEach((x, index) => {
+    sidewalkMatrix.makeTranslation(
+      x,
+      placement.road.baseY + 0.07,
+      placement.road.centerZ,
+    )
+    sidewalks.setMatrixAt(index, sidewalkMatrix)
+  })
+  sidewalks.instanceMatrix.needsUpdate = true
+  group.add(sidewalks)
+
+  const dashGeometry = new THREE.BoxGeometry(0.09, 0.018, 0.72)
+  geometries.add(dashGeometry)
+  const laneDashes = new THREE.InstancedMesh(
+    dashGeometry,
+    markingMaterial,
+    ROAD_DASH_COUNT,
+  )
+  laneDashes.name = 'Road center dashes'
+  const dashMatrix = new THREE.Matrix4()
+  for (let index = 0; index < ROAD_DASH_COUNT; index += 1) {
+    const z = placement.road.centerZ
+      - placement.road.length * 0.38
+      + index * (placement.road.length * 0.76 / (ROAD_DASH_COUNT - 1))
+    dashMatrix.makeTranslation(
+      placement.road.centerX,
+      placement.road.baseY + 0.05,
+      z,
+    )
+    laneDashes.setMatrixAt(index, dashMatrix)
+  }
+  laneDashes.instanceMatrix.needsUpdate = true
+  group.add(laneDashes)
+
+  const stripeGeometry = new THREE.BoxGeometry(
+    placement.road.crosswalkStripeWidth,
+    0.022,
+    0.18,
+  )
+  geometries.add(stripeGeometry)
+  const crosswalk = new THREE.InstancedMesh(
+    stripeGeometry,
+    crosswalkMaterial,
+    CROSSWALK_STRIPE_COUNT,
+  )
+  crosswalk.name = 'Classroom crosswalk'
+  const stripeMatrix = new THREE.Matrix4()
+  for (let index = 0; index < CROSSWALK_STRIPE_COUNT; index += 1) {
+    stripeMatrix.makeTranslation(
+      placement.road.centerX,
+      placement.road.baseY + 0.052,
+      placement.road.crosswalkZ - 0.55 + index * 0.22,
+    )
+    crosswalk.setMatrixAt(index, stripeMatrix)
+  }
+  crosswalk.instanceMatrix.needsUpdate = true
+  group.add(crosswalk)
+
+  const postGeometry = new THREE.CylinderGeometry(0.045, 0.065, 2.25, 8)
+  const lightGeometry = new THREE.SphereGeometry(0.13, 10, 8)
+  geometries.add(postGeometry)
+  geometries.add(lightGeometry)
+  const lampPosts = new THREE.InstancedMesh(
+    postGeometry,
+    lampPostMaterial,
+    ROAD_LAMP_COUNT,
+  )
+  const lampLights = new THREE.InstancedMesh(
+    lightGeometry,
+    lampGlowMaterial,
+    ROAD_LAMP_COUNT,
+  )
+  lampPosts.name = 'Road lamp posts'
+  lampLights.name = 'Road lamp lights'
+  const lampMatrix = new THREE.Matrix4()
+  placement.road.lampPositions.forEach(([x, z], index) => {
+    lampMatrix.makeTranslation(x, placement.road.baseY + 1.17, z)
+    lampPosts.setMatrixAt(index, lampMatrix)
+    lampMatrix.makeTranslation(x, placement.road.baseY + 2.32, z)
+    lampLights.setMatrixAt(index, lampMatrix)
+  })
+  lampPosts.instanceMatrix.needsUpdate = true
+  lampLights.instanceMatrix.needsUpdate = true
+  group.add(lampPosts)
+  group.add(lampLights)
+}
+
+function createWindowViewDetails(group, placement, materials, geometries) {
+  const standardMaterial = (color, options = {}) => {
+    const value = new THREE.MeshStandardMaterial({
+      color,
+      roughness: 0.88,
+      metalness: 0,
+      ...options,
+    })
+    materials.add(value)
+    return value
+  }
+  const trunkMaterial = standardMaterial(CAMPUS_ENVIRONMENT_PALETTE.treeTrunk)
+  const leafMaterial = standardMaterial(CAMPUS_ENVIRONMENT_PALETTE.treeLeaf)
+  const shrubMaterial = standardMaterial(CAMPUS_ENVIRONMENT_PALETTE.shrub)
+  const benchMaterial = standardMaterial(CAMPUS_ENVIRONMENT_PALETTE.bench)
+  const signMaterial = standardMaterial(CAMPUS_ENVIRONMENT_PALETTE.trim)
+  const signFaceMaterial = standardMaterial(CAMPUS_ENVIRONMENT_PALETTE.building, {
+    emissive: CAMPUS_ENVIRONMENT_PALETTE.windowGlow,
+    emissiveIntensity: 0.08,
+  })
+
+  const trunkGeometry = new THREE.CylinderGeometry(0.09, 0.13, 1.05, 8)
+  const canopyGeometry = new THREE.SphereGeometry(0.64, 12, 9)
+  geometries.add(trunkGeometry)
+  geometries.add(canopyGeometry)
+  const trunks = new THREE.InstancedMesh(
+    trunkGeometry,
+    trunkMaterial,
+    placement.windowView.treePositions.length,
+  )
+  const canopies = new THREE.InstancedMesh(
+    canopyGeometry,
+    leafMaterial,
+    placement.windowView.treePositions.length,
+  )
+  trunks.name = 'Window-side tree trunks'
+  canopies.name = 'Window-side tree canopies'
+  const treeMatrix = new THREE.Matrix4()
+  placement.windowView.treePositions.forEach(([x, z], index) => {
+    const treeScale = index === 1 ? 1.28 : 1
+    treeMatrix.compose(
+      new THREE.Vector3(
+        x,
+        placement.windowView.baseY + 0.54 * treeScale,
+        z,
+      ),
+      new THREE.Quaternion(),
+      new THREE.Vector3(treeScale, treeScale, treeScale),
+    )
+    trunks.setMatrixAt(index, treeMatrix)
+    treeMatrix.compose(
+      new THREE.Vector3(
+        x,
+        placement.windowView.baseY
+          + 1.43 * treeScale
+          - (index === 1 ? 0.22 : 0),
+        z,
+      ),
+      new THREE.Quaternion(),
+      new THREE.Vector3(treeScale, treeScale, treeScale),
+    )
+    canopies.setMatrixAt(index, treeMatrix)
+  })
+  trunks.instanceMatrix.needsUpdate = true
+  canopies.instanceMatrix.needsUpdate = true
+  group.add(trunks)
+  group.add(canopies)
+
+  const shrubGeometry = new THREE.SphereGeometry(0.3, 10, 7)
+  geometries.add(shrubGeometry)
+  const shrubs = new THREE.InstancedMesh(
+    shrubGeometry,
+    shrubMaterial,
+    placement.windowView.shrubPositions.length,
+  )
+  shrubs.name = 'Window-side shrubs'
+  const shrubMatrix = new THREE.Matrix4()
+  placement.windowView.shrubPositions.forEach(([x, z], index) => {
+    shrubMatrix.compose(
+      new THREE.Vector3(x, placement.windowView.baseY + 0.24, z),
+      new THREE.Quaternion(),
+      new THREE.Vector3(1, 0.72, 1.35),
+    )
+    shrubs.setMatrixAt(index, shrubMatrix)
+  })
+  shrubs.instanceMatrix.needsUpdate = true
+  group.add(shrubs)
+
+  const seatGeometry = new THREE.BoxGeometry(1.35, 0.12, 0.38)
+  const backGeometry = new THREE.BoxGeometry(1.35, 0.55, 0.1)
+  const legGeometry = new THREE.BoxGeometry(0.1, 0.42, 0.1)
+  geometries.add(seatGeometry)
+  geometries.add(backGeometry)
+  geometries.add(legGeometry)
+  addMesh(group, seatGeometry, benchMaterial, {
+    name: 'Sidewalk bench seat',
+    position: [
+      placement.windowView.bench[0],
+      placement.windowView.baseY + 0.48,
+      placement.windowView.bench[1],
+    ],
+  })
+  addMesh(group, backGeometry, benchMaterial, {
+    name: 'Sidewalk bench back',
+    position: [
+      placement.windowView.bench[0] + 0.59,
+      placement.windowView.baseY + 0.75,
+      placement.windowView.bench[1],
+    ],
+    rotation: [0, Math.PI / 2, 0],
+  })
+  const benchLegs = new THREE.InstancedMesh(legGeometry, signMaterial, 2)
+  benchLegs.name = 'Sidewalk bench legs'
+  const benchLegMatrix = new THREE.Matrix4()
+  ;[-0.45, 0.45].forEach((offset, index) => {
+    benchLegMatrix.makeTranslation(
+      placement.windowView.bench[0] + offset,
+      placement.windowView.baseY + 0.22,
+      placement.windowView.bench[1],
+    )
+    benchLegs.setMatrixAt(index, benchLegMatrix)
+  })
+  benchLegs.instanceMatrix.needsUpdate = true
+  group.add(benchLegs)
+
+  const signPostGeometry = new THREE.BoxGeometry(0.1, 1.35, 0.1)
+  const signFaceGeometry = new THREE.BoxGeometry(0.12, 0.58, 1.15)
+  geometries.add(signPostGeometry)
+  geometries.add(signFaceGeometry)
+  addMesh(group, signPostGeometry, signMaterial, {
+    name: 'Music school sign post',
+    position: [
+      placement.windowView.sign[0],
+      placement.windowView.baseY + 0.68,
+      placement.windowView.sign[1],
+    ],
+  })
+  addMesh(group, signFaceGeometry, signFaceMaterial, {
+    name: 'Music school sign face',
+    position: [
+      placement.windowView.sign[0],
+      placement.windowView.baseY + 1.2,
+      placement.windowView.sign[1],
+    ],
+  })
 }
 
 function createSideHallway(group, placement, materials, geometries) {
@@ -550,10 +847,19 @@ function createClassroomEnclosure(group, placement, materials, geometries) {
 export function createCampusPlacement(roomBounds, { floorY = 0 } = {}) {
   const center = roomBounds.getCenter(new THREE.Vector3())
   const size = roomBounds.getSize(new THREE.Vector3())
-  const facadeWidth = Math.max(size.x + 12, 20)
+  // The facade runs along the room's Z axis, so size it from the window-wall
+  // length rather than the room's X-axis width. Using size.x leaves the far
+  // window bays with only sky and ground in longer classrooms.
+  const facadeWidth = Math.max(size.z + 12, 20)
   const floorHeight = 2.45
   const buildingHeight = floorHeight * BUILDING_WINDOW_ROWS + 0.65
-  const buildingX = roomBounds.max.x + Math.max(size.x * 0.95, 9)
+  const buildingX = roomBounds.max.x + Math.min(Math.max(size.x * 0.62, 6.4), 7.4)
+  const roadLeftX = roomBounds.max.x + 0.85
+  const roadRightX = buildingX - 0.95
+  const roadWidth = Math.max(roadRightX - roadLeftX, 3.8)
+  const roadCenterX = (roadLeftX + roadRightX) / 2
+  const roadLength = Math.max(facadeWidth - 1.5, size.z + 7)
+  const sidewalkWidth = 0.62
   const hallwayWidth = Math.max(size.x * 0.42, 4.2)
   const hallwayLength = size.z + 3.5
   const hallwayOverlap = 0.18
@@ -589,6 +895,40 @@ export function createCampusPlacement(roomBounds, { floorY = 0 } = {}) {
       floorHeight,
       frontX: buildingX - 0.32,
       position: [buildingX, floorY + buildingHeight / 2, center.z],
+    },
+    road: {
+      centerX: roadCenterX,
+      centerZ: center.z,
+      baseY: floorY - 0.035,
+      width: roadWidth,
+      length: roadLength,
+      sidewalkWidth,
+      sidewalkX: [
+        roadLeftX - sidewalkWidth / 2,
+        roadRightX + sidewalkWidth / 2,
+      ],
+      crosswalkStripeWidth: Math.max(roadWidth - 0.7, 3.1),
+      crosswalkZ: center.z + Math.min(size.z * 0.28, 2.2),
+      lampPositions: [
+        [roadLeftX - sidewalkWidth / 2, center.z - Math.min(size.z * 0.2, 2.1)],
+        [roadRightX + sidewalkWidth / 2, center.z - Math.min(size.z * 0.2, 2.1)],
+        [roadLeftX - sidewalkWidth / 2, center.z + Math.min(size.z * 0.2, 2.1)],
+        [roadRightX + sidewalkWidth / 2, center.z + Math.min(size.z * 0.2, 2.1)],
+      ],
+    },
+    windowView: {
+      baseY: floorY,
+      treePositions: [
+        [roadLeftX - sidewalkWidth * 0.62, center.z - Math.min(size.z * 0.31, 3.1)],
+        [roadLeftX + sidewalkWidth * 0.28, center.z + Math.min(size.z * 0.44, 4.5)],
+      ],
+      shrubPositions: [
+        [roadLeftX - sidewalkWidth * 0.62, center.z - 1.1],
+        [roadLeftX - sidewalkWidth * 0.62, center.z],
+        [roadLeftX - sidewalkWidth * 0.62, center.z + 1.1],
+      ],
+      bench: [roadLeftX - sidewalkWidth * 0.58, center.z - 1.75],
+      sign: [roadRightX + sidewalkWidth * 0.58, center.z + 0.75],
     },
     classroom: {
       centerX: center.x,
@@ -663,6 +1003,8 @@ export function createClassroomCampusEnvironment({ roomBounds }) {
 
   createSun(group, placement, materials, geometries)
   createCourtyardSchool(group, placement, materials, geometries)
+  createCampusRoad(group, placement, materials, geometries)
+  createWindowViewDetails(group, placement, materials, geometries)
   createSideHallway(group, placement, materials, geometries)
   const cameraBlockers = createClassroomEnclosure(
     group,
