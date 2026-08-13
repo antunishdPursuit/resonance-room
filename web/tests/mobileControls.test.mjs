@@ -5,6 +5,7 @@ import {
   calculateJoystickInput,
   classifyPhoneViewport,
   getEntryState,
+  shouldShowMobileControls,
 } from '../src/ui/mobileControls.js'
 
 test('classifies coarse-pointer phone viewports across orientation', () => {
@@ -96,6 +97,33 @@ test('reports the shared entry gate and phone rotation states', () => {
     assetsReady: true,
     entryStarted: true,
   }), 'rotate-to-continue')
+})
+
+test('keeps phone movement controls available throughout landscape gameplay', () => {
+  assert.equal(shouldShowMobileControls({
+    isPhone: true,
+    isLandscape: true,
+    entryStarted: true,
+    loaderVisible: false,
+  }), true)
+  assert.equal(shouldShowMobileControls({
+    isPhone: true,
+    isLandscape: false,
+    entryStarted: true,
+    loaderVisible: false,
+  }), false)
+  assert.equal(shouldShowMobileControls({
+    isPhone: true,
+    isLandscape: true,
+    entryStarted: false,
+    loaderVisible: false,
+  }), false)
+  assert.equal(shouldShowMobileControls({
+    isPhone: true,
+    isLandscape: true,
+    entryStarted: true,
+    loaderVisible: true,
+  }), false)
 })
 
 test('maps joystick drags to bounded camera-relative movement', () => {
