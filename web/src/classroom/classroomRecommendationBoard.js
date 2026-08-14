@@ -105,7 +105,7 @@ function drawBoard(
   context.fillStyle = '#f9a8d4'
   context.font = `700 48px ${BOARD_HEADING_FONT}`
   context.textAlign = 'center'
-  context.fillText("ESME'S PICKS", CANVAS_WIDTH / 2, 58)
+  context.fillText("RIRI'S PICKS", CANVAS_WIDTH / 2, 58)
 
   const prompt = getRecommendationBoardPrompt(interactionEnabled)
   if (prompt) {

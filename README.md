@@ -6,7 +6,7 @@ Resonance Room is an interactive 3D music-discovery experience. Explore a virtua
 
 The public demo runs entirely in the browser with a transparent, deterministic 36-song catalog. It does not require an account, backend, provider key, or paid API.
 
-> **Character rename:** Riri is the approved successor to Esme. The current deployed build and source still display Esme until that rename is implemented and verified.
+> **Character name:** Riri is the current product character name. The bundled source model remains AvatarSample_B.
 
 ## Why It Exists
 
@@ -176,8 +176,8 @@ Resonance Room grew from the music recommender in [applied-ai-system-project](ht
 
 - Character movement uses the [Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) by Quaternius under CC0 1.0. The repository includes its license text.
 - The classroom source is recorded in this [Fab listing](https://www.fab.com/listings/a92bc730-55a9-46e5-ae25-4dcd9e6a08f8).
-- The bundled `Esme.vrm` file is the VRoid Project's [AvatarSample_B](https://hub.vroid.com/en/characters/7939147878897061040/models/2292219474373673889). The product name does not replace the source model's identity or license terms.
+- The bundled `Riri.vrm` file is the VRoid Project's [AvatarSample_B](https://hub.vroid.com/en/characters/7939147878897061040/models/2292219474373673889). The product name does not replace the source model's identity or license terms.
 
 ## Status
 
-The frontend-only demo is live. The next approved product work is a restrained road treatment, the Esme-to-Riri character rename, and real-phone verification. The optional FastAPI mode remains local-development functionality.
+The frontend-only demo is live. The road treatment and Riri character rename are implemented. Real-phone verification remains pending. The optional FastAPI mode remains local-development functionality.

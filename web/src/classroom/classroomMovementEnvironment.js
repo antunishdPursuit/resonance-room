@@ -70,7 +70,7 @@ function createRearWallBoundary({
 
   // The room shell's outer bounds extend behind the visible wall. Use the
   // front face of the confirmed large blackboard as the inner wall plane so
-  // Esme cannot enter the narrow space behind the TV or other fixtures.
+  // Riri cannot enter the narrow space behind the TV or other fixtures.
   const wallFrontZ = largeBlackboard.bounds.min.z - 0.04
 
   return {

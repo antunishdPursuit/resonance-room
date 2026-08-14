@@ -363,7 +363,7 @@ export function createAvatarMovementController({
       const nextX = avatarRoot.position.x + worldMovement.x * distance
       const nextZ = avatarRoot.position.z + worldMovement.y * distance
 
-      // Resolve each axis separately so Esme slides along obstacles instead of
+      // Resolve each axis separately so Riri slides along obstacles instead of
       // stopping when only one direction is blocked.
       if (canOccupy(nextX, avatarRoot.position.z, environment)) {
         avatarRoot.position.x = nextX

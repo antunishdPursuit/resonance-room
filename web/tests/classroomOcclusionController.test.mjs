@@ -55,7 +55,7 @@ function createSceneTest({
   }
 }
 
-test('fades only classroom geometry between the camera and Esme', () => {
+test('fades only classroom geometry between the camera and Riri', () => {
   const {
     behindAvatar,
     blocker,

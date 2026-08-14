@@ -12,11 +12,11 @@ function PhoneRotationGraphic() {
 function ControlGuide({ isPhone }) {
   const controls = isPhone
     ? [
-        ['Move Esme', 'Drag to move. Push to the edge to run.'],
+        ['Move Riri', 'Drag to move. Push to the edge to run.'],
         ['Look around', 'Drag on the right side of the classroom.'],
       ]
     : [
-        ['Move Esme', 'Use WASD or the arrow keys. Hold Shift to run.'],
+        ['Move Riri', 'Use WASD or the arrow keys. Hold Shift to run.'],
         ['Look around', 'Drag anywhere in the classroom.'],
         ['Zoom', 'Use the mouse wheel.'],
       ]
@@ -212,7 +212,7 @@ export function VoiceReminder({ onDismiss, onOpenControls }) {
     <aside className="voice-reminder" aria-label="Voice is off" role="status">
       <div>
         <strong>Voice is off</strong>
-        <span>Open Controls if you want to hear Esme speak.</span>
+        <span>Open Controls if you want to hear Riri speak.</span>
       </div>
       <div className="voice-reminder__actions">
         <button className="button button--primary" onClick={onOpenControls}>

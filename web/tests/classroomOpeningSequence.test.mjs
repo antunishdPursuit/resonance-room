@@ -19,7 +19,7 @@ function createPositionRecorder() {
   }
 }
 
-test('positions Esme and the camera in the approved opening composition', () => {
+test('positions Riri and the camera in the approved opening composition', () => {
   const avatarPosition = createPositionRecorder()
   const cameraPosition = createPositionRecorder()
   let target = null

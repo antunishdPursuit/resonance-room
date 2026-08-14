@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { VRMAnimation, createVRMAnimationClip } from '@pixiv/three-vrm-animation'
 
 // Quaternius uses a conventional humanoid rig. Map only the joints needed for
-// locomotion so its source model can stay separate from Esme's VRM skeleton.
+// locomotion so its source model can stay separate from Riri's VRM skeleton.
 const SOURCE_TO_VRM_BONE = new Map([
   ['pelvis', 'hips'],
   ['spine_01', 'spine'],

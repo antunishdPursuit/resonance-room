@@ -13,7 +13,7 @@ const BASE_INPUT = {
   bubbleHeight: 100,
 }
 
-test('positions and clamps a visible bubble around Esme', () => {
+test('positions and clamps a visible bubble around Riri', () => {
   const position = calculateSpeechBubblePosition(BASE_INPUT)
 
   assert.deepEqual(position, {

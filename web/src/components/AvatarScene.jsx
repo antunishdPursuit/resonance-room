@@ -92,8 +92,8 @@ const BACKEND_VOICE = createBackendVoiceClient({ appConfig: APP_CONFIG })
 const MAX_CHAT_MESSAGES = 20
 const SPEECH_BUBBLE_VISIBLE_MS = 7000
 const WELCOME_PROMPT = APP_CONFIG.usesBackend
-  ? 'Hi, I\u2019m Esme. What kind of songs do you like? You can name a genre, artist, mood, or activity.'
-  : 'Hi, I\u2019m Esme. Pick a vibe below and I\u2019ll find six songs for you.'
+  ? 'Hi, I\u2019m Riri. What kind of songs do you like? You can name a genre, artist, mood, or activity.'
+  : 'Hi, I\u2019m Riri. Pick a vibe below and I\u2019ll find six songs for you.'
 const PAGE_PARAMETERS = new URLSearchParams(window.location.search)
 const CLASSROOM_INSPECTION_ENABLED = import.meta.env.DEV
   && PAGE_PARAMETERS.get('inspectClassroom') === '1'
@@ -212,7 +212,7 @@ export default function AvatarScene() {
   }, [mobileControlsActive])
 
   const chatLimitReached = messages.length >= MAX_CHAT_MESSAGES
-  const latestEsmeMessage = messages.slice().reverse().find(message => message.role === 'assistant')
+  const latestRiriMessage = messages.slice().reverse().find(message => message.role === 'assistant')
   const latestRecommendationMessage = messages
     .slice()
     .reverse()
@@ -364,7 +364,7 @@ export default function AvatarScene() {
       movementControllerRef.current = movementController
       resetCameraRef.current = movementController.resetCamera
       if (COLLISION_DEBUG_ENABLED) {
-        window.__ESME_MOVEMENT__ = movementController
+        window.__RIRI_MOVEMENT__ = movementController
       }
       setMovementReady(true)
     }
@@ -498,8 +498,8 @@ export default function AvatarScene() {
           const collisionZones = classroomInspector.getCollisionZones()
           setClassroomInventory(inventory)
           setClassroomCollisionZones(collisionZones)
-          window.__ESME_CLASSROOM_INVENTORY__ = inventory
-          window.__ESME_CLASSROOM_COLLISION_ZONES__ = collisionZones
+          window.__RIRI_CLASSROOM_INVENTORY__ = inventory
+          window.__RIRI_CLASSROOM_COLLISION_ZONES__ = collisionZones
           classroomInspector.selectInventoryItem(0)
         }
       },
@@ -544,7 +544,7 @@ export default function AvatarScene() {
 
     // Load VRM
     loader.load(
-      '/Esme.vrm',
+      '/Riri.vrm',
       (gltf) => {
         if (disposed) return
 
@@ -824,8 +824,8 @@ export default function AvatarScene() {
       window.speechSynthesis.cancel()
       classroomInspector?.dispose()
       classroomInspectorRef.current = null
-      delete window.__ESME_CLASSROOM_INVENTORY__
-      delete window.__ESME_CLASSROOM_COLLISION_ZONES__
+      delete window.__RIRI_CLASSROOM_INVENTORY__
+      delete window.__RIRI_CLASSROOM_COLLISION_ZONES__
       classroomInspectionCamera?.dispose()
       movementController?.dispose()
       movementController = null
@@ -839,7 +839,7 @@ export default function AvatarScene() {
       animationControllerRef.current = null
       openingGreetingActionRef.current = null
       boardInteractionActionRef.current = null
-      delete window.__ESME_MOVEMENT__
+      delete window.__RIRI_MOVEMENT__
       collisionDebugView?.dispose()
       campusEnvironment?.dispose()
       campusEnvironment = null
@@ -892,7 +892,7 @@ export default function AvatarScene() {
   }
 
   async function sendMessage(text) {
-    // Reserve space for both the user's message and Esme's reply.
+    // Reserve space for both the user's message and Riri's reply.
     if (messagesRef.current.length + 2 > MAX_CHAT_MESSAGES) return
 
     const userMsg = { role: 'user', content: text }
@@ -1036,11 +1036,11 @@ export default function AvatarScene() {
 
   return (
     <main
-      className="esme-app"
+      className="riri-app"
       data-phone={isPhoneExperience}
       data-phone-landscape={isPhoneLandscape}
     >
-      <canvas ref={canvasRef} className="esme-canvas" />
+      <canvas ref={canvasRef} className="riri-canvas" />
 
       {/* Loading screen */}
       {loaderVisible && (
@@ -1108,21 +1108,21 @@ export default function AvatarScene() {
 
       <div
         ref={speechBubbleRef}
-        className="esme-response"
+        className="riri-response"
         aria-hidden="true"
         data-visible="false"
       >
-        <span className="esme-response__content">
-          {latestEsmeMessage?.content ?? WELCOME_PROMPT}
+        <span className="riri-response__content">
+          {latestRiriMessage?.content ?? WELCOME_PROMPT}
         </span>
       </div>
       <div
         className="visually-hidden"
-        role={latestEsmeMessage?.kind === 'error' ? 'alert' : 'status'}
-        aria-live={latestEsmeMessage?.kind === 'error' ? 'assertive' : 'polite'}
+        role={latestRiriMessage?.kind === 'error' ? 'alert' : 'status'}
+        aria-live={latestRiriMessage?.kind === 'error' ? 'assertive' : 'polite'}
         aria-atomic="true"
       >
-        {latestEsmeMessage?.content ?? WELCOME_PROMPT}
+        {latestRiriMessage?.content ?? WELCOME_PROMPT}
       </div>
 
       {/* Chat history */}
@@ -1135,7 +1135,7 @@ export default function AvatarScene() {
           <strong>Conversation</strong>
           <button className="text-button" onClick={() => setTranscriptOpen(false)}>Close</button>
         </div>
-        <div className="transcript-entry transcript-entry--assistant" aria-label={"Esme\u2019s opening question"}>
+        <div className="transcript-entry transcript-entry--assistant" aria-label={"Riri\u2019s opening question"}>
           <div className="transcript-bubble transcript-bubble--assistant">
             {WELCOME_PROMPT}
           </div>
@@ -1182,7 +1182,7 @@ export default function AvatarScene() {
         ))}
         {loading && (
           <div className="transcript-status">
-            Esme is thinking...
+            Riri is thinking...
           </div>
         )}
       </section>
@@ -1372,7 +1372,7 @@ export default function AvatarScene() {
         <aside className="movement-debug" aria-live="polite">
           <strong>Movement collision test</strong>
           <span>
-            Use WASD or the arrow keys to move Esme. Hold Shift to run.
+            Use WASD or the arrow keys to move Riri. Hold Shift to run.
           </span>
           <span>
             Pink: desks · Orange: fixed objects · Yellow: window boundary · Blue: room boundary
@@ -1421,7 +1421,7 @@ export default function AvatarScene() {
                   className="composer-input"
                   ref={inputRef}
                   onKeyDown={handleKeyDown}
-                  placeholder={chatLimitReached ? 'Start a new chat to continue' : loading ? 'Esme is thinking...' : 'Say something to Esme...'}
+                  placeholder={chatLimitReached ? 'Start a new chat to continue' : loading ? 'Riri is thinking...' : 'Say something to Riri...'}
                   disabled={loading || chatLimitReached}
                 />
                 {chatLimitReached ? (

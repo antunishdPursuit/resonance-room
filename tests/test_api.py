@@ -101,7 +101,7 @@ def test_chat_awaits_async_anthropic_client(monkeypatch):
     monkeypatch.setattr(api, "_anthropic_client", lambda: fake_client)
 
     response = request("POST", "/chat", json={
-        "messages": [{"role": "user", "content": "Hello Esme"}],
+        "messages": [{"role": "user", "content": "Hello Riri"}],
     })
 
     assert response.status_code == 200

@@ -47,7 +47,7 @@ test('checks and requests ElevenLabs audio through FastAPI', async () => {
   })
 
   assert.equal(await client.checkAvailability(), true)
-  assert.equal(await client.synthesize('Hello Esme'), audioBlob)
+  assert.equal(await client.synthesize('Hello Riri'), audioBlob)
   assert.deepEqual(requests[0], {
     url: 'http://127.0.0.1:8001/tts/available',
     options: undefined,
@@ -56,7 +56,7 @@ test('checks and requests ElevenLabs audio through FastAPI', async () => {
   assert.equal(requests[1].options.method, 'POST')
   assert.deepEqual(
     JSON.parse(requests[1].options.body),
-    { text: 'Hello Esme' },
+    { text: 'Hello Riri' },
   )
 })
 
