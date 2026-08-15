@@ -2,6 +2,8 @@
 
 [Try Resonance Room live](https://resonance-room-web.onrender.com/)
 
+[Watch the Resonance Room demo on YouTube](https://youtu.be/O3GUOC3G2SA)
+
 Resonance Room is an interactive 3D music-discovery experience. Explore a virtual classroom, choose a vibe, receive six song recommendations, and keep a liked list for the current session.
 
 The public demo runs entirely in the browser with a transparent, deterministic 36-song catalog. It does not require an account, backend, provider key, or paid API.
