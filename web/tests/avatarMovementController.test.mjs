@@ -3,10 +3,15 @@ import test from 'node:test'
 import * as THREE from 'three'
 
 import {
+  CAMERA_MODES,
+  dampCameraYaw,
+  normalizeCameraMode,
   resolveCameraPosition,
+  resolveFollowHeading,
   resolveMovementInput,
   shouldRunMovement,
   shouldStartCameraOrbit,
+  updateFollowCameraYaw,
 } from '../src/classroom/avatarMovementController.js'
 
 test('keeps the camera inside a blocking classroom wall', () => {
@@ -82,7 +87,7 @@ test('runs from Shift or an active outer-ring joystick input', () => {
   }), false)
 })
 
-test('keeps mouse orbit unchanged and reserves phone touch orbit for the right half', () => {
+test('defaults to fixed follow camera and enables orbit only in free mode', () => {
   const common = {
     button: 0,
     clientX: 100,
@@ -93,25 +98,128 @@ test('keeps mouse orbit unchanged and reserves phone touch orbit for the right h
   assert.equal(shouldStartCameraOrbit({
     ...common,
     pointerType: 'mouse',
+  }), false)
+  assert.equal(shouldStartCameraOrbit({
+    ...common,
+    cameraMode: CAMERA_MODES.FREE,
+    pointerType: 'mouse',
   }), true)
   assert.equal(shouldStartCameraOrbit({
     ...common,
+    cameraMode: CAMERA_MODES.FREE,
     pointerType: 'touch',
   }), false)
   assert.equal(shouldStartCameraOrbit({
     ...common,
+    cameraMode: CAMERA_MODES.FREE,
     pointerType: 'touch',
     clientX: 200,
   }), true)
   assert.equal(shouldStartCameraOrbit({
     ...common,
+    cameraMode: CAMERA_MODES.FREE,
     pointerType: 'touch',
     clientX: 350,
   }), true)
   assert.equal(shouldStartCameraOrbit({
     ...common,
+    cameraMode: CAMERA_MODES.FREE,
     pointerType: 'touch',
     clientX: 350,
     button: 2,
   }), false)
+})
+
+test('normalizes unsupported camera modes to the fixed follow default', () => {
+  assert.equal(normalizeCameraMode(CAMERA_MODES.FOLLOW), CAMERA_MODES.FOLLOW)
+  assert.equal(normalizeCameraMode(CAMERA_MODES.FREE), CAMERA_MODES.FREE)
+  assert.equal(normalizeCameraMode('orbit'), CAMERA_MODES.FOLLOW)
+  assert.equal(normalizeCameraMode(), CAMERA_MODES.FOLLOW)
+})
+
+test('damps follow-camera yaw along the shortest turn', () => {
+  assert.equal(dampCameraYaw(0, Math.PI / 2, 0.5), Math.PI / 4)
+  assert.equal(dampCameraYaw(0, Math.PI / 2, 2), Math.PI / 2)
+
+  const acrossBoundary = dampCameraYaw(3.1, -3.1, 0.5)
+  assert.ok(Math.abs(acrossBoundary - Math.PI) < 0.001)
+})
+
+test('keeps follow-camera yaw stable during movement and waits before recentering', () => {
+  const moving = updateFollowCameraYaw({
+    cameraYaw: 0,
+    targetYaw: Math.PI / 2,
+    delta: 1,
+    movementActive: true,
+    idleDuration: 2,
+    recentering: true,
+  })
+  assert.deepEqual(moving, {
+    cameraYaw: 0,
+    idleDuration: 0,
+    recentering: false,
+  })
+
+  const waiting = updateFollowCameraYaw({
+    cameraYaw: 0,
+    targetYaw: Math.PI / 2,
+    delta: 0.2,
+    movementActive: false,
+  })
+  assert.equal(waiting.cameraYaw, 0)
+  assert.equal(waiting.recentering, false)
+
+  const recentering = updateFollowCameraYaw({
+    cameraYaw: waiting.cameraYaw,
+    targetYaw: Math.PI / 2,
+    delta: 0.25,
+    movementActive: false,
+    idleDuration: waiting.idleDuration,
+  })
+  assert.ok(recentering.cameraYaw > 0)
+  assert.equal(recentering.recentering, true)
+})
+
+test('ignores small follow headings and completes a meaningful recenter', () => {
+  const ignored = updateFollowCameraYaw({
+    cameraYaw: 0,
+    targetYaw: 0.05,
+    delta: 1,
+    movementActive: false,
+  })
+  assert.equal(ignored.cameraYaw, 0)
+  assert.equal(ignored.recentering, false)
+
+  let state = {
+    cameraYaw: 0,
+    idleDuration: 0,
+    recentering: false,
+  }
+  for (let frame = 0; frame < 180; frame += 1) {
+    state = updateFollowCameraYaw({
+      ...state,
+      targetYaw: Math.PI / 2,
+      delta: 1 / 60,
+      movementActive: false,
+    })
+  }
+
+  assert.equal(state.cameraYaw, Math.PI / 2)
+  assert.equal(state.recentering, false)
+})
+
+test('recenters behind Riri when collision makes her slide sideways', () => {
+  assert.equal(resolveFollowHeading({
+    currentHeading: 0,
+    avatarYaw: Math.PI / 4,
+    movedX: 0.1,
+    movedZ: 0,
+  }), Math.PI / 4)
+
+  assert.equal(resolveFollowHeading({
+    currentHeading: 0,
+    avatarYaw: Math.PI / 4,
+    movedX: 0,
+    movedZ: 0,
+  }), 0)
 })

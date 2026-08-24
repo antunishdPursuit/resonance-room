@@ -439,6 +439,13 @@ summary:focus-visible {
   line-height: 1.35;
 }
 
+.panel-heading--with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .panel-empty {
   padding: 0 12px;
   color: var(--riri-muted) !important;
@@ -747,6 +754,41 @@ summary:focus-visible {
   flex-wrap: wrap;
 }
 
+.controls-menu__camera {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid var(--riri-border);
+}
+
+.controls-menu__camera legend {
+  padding: 0;
+  color: var(--riri-text);
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.controls-menu__camera-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.controls-menu__camera-options .button {
+  min-width: 0;
+}
+
+.controls-menu__camera p {
+  margin: 0;
+  color: var(--riri-muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
 .controls-menu__actions .button {
   flex: 1 1 120px;
 }
@@ -764,6 +806,42 @@ summary:focus-visible {
 
 .controls-menu__demo strong {
   color: var(--riri-info);
+}
+
+.mobile-utility-menu {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 25;
+  display: grid;
+  width: min(320px, calc(100vw - 28px));
+  gap: 12px;
+  padding: 14px;
+  color: var(--riri-text);
+  background: var(--riri-surface);
+  border: 1px solid var(--riri-border);
+  border-radius: 16px;
+  box-shadow: var(--riri-shadow);
+  backdrop-filter: blur(14px);
+}
+
+.mobile-utility-menu__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+}
+
+.mobile-utility-menu__actions {
+  display: grid;
+  gap: 8px;
+}
+
+.mobile-utility-menu__actions .button {
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
 }
 
 .gameplay-actions {
@@ -1241,14 +1319,16 @@ summary:focus-visible {
 
 .riri-app[data-phone-landscape="true"] .liked-panel,
 .riri-app[data-phone-landscape="true"] .transcript,
-.riri-app[data-phone-landscape="true"] .controls-menu {
+.riri-app[data-phone-landscape="true"] .controls-menu,
+.riri-app[data-phone-landscape="true"] .mobile-utility-menu {
   top: max(8px, env(safe-area-inset-top)) !important;
   right: max(8px, env(safe-area-inset-right)) !important;
   bottom: auto !important;
   left: auto !important;
-  width: min(420px, calc(100dvw - 154px)) !important;
+  width: clamp(250px, 42dvw, 360px) !important;
   max-height: calc(100dvh - var(--mobile-actions-height) - 20px) !important;
   overflow-y: auto;
+  background: rgba(24, 15, 24, 0.94);
 }
 
 .riri-app[data-phone-landscape="true"] .liked-panel {
@@ -1307,13 +1387,13 @@ summary:focus-visible {
 }
 
 .riri-app[data-phone-landscape="true"] .gameplay-actions .button {
-  min-height: 38px;
-  padding: 7px 9px;
-  font-size: 0.68rem;
+  min-height: 44px;
+  padding: 8px 10px;
+  font-size: 0.875rem;
 }
 
 .riri-app[data-phone-landscape="true"] .vibe-control__trigger {
-  min-width: 118px;
+  min-width: 148px;
 }
 
 .riri-app[data-phone-landscape="true"] .gameplay-actions__utilities {
@@ -1372,8 +1452,8 @@ summary:focus-visible {
   }
 
   .riri-app[data-phone-landscape="true"] .gameplay-actions .button {
-    min-height: 36px;
-    padding-block: 5px;
+    min-height: 42px;
+    padding-block: 6px;
   }
 }
 

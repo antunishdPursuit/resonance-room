@@ -15,6 +15,10 @@ const WALK_SPEED = 1.35
 const RUN_SPEED = 2.25
 const AVATAR_RADIUS = 0.24
 const CAMERA_FOLLOW_SPEED = 5
+const CAMERA_RECENTER_DELAY = 0.4
+const CAMERA_RECENTER_SPEED = 3
+const CAMERA_RECENTER_DEAD_ZONE = THREE.MathUtils.degToRad(8)
+const CAMERA_RECENTER_FINISH_THRESHOLD = THREE.MathUtils.degToRad(0.5)
 const CAMERA_TARGET_HEIGHT = 1.15
 const ROOM_EDGE_PADDING = 0.08
 const CAMERA_ROTATION_SPEED = 0.004
@@ -25,6 +29,99 @@ const MIN_CAMERA_PITCH = -0.15
 const MAX_CAMERA_PITCH = 0.75
 const CAMERA_WALL_CLEARANCE = 0.14
 const MIN_BLOCKED_CAMERA_DISTANCE = 0.55
+
+export const CAMERA_MODES = Object.freeze({
+  FOLLOW: 'follow',
+  FREE: 'free',
+})
+
+export function normalizeCameraMode(value) {
+  return value === CAMERA_MODES.FREE
+    ? CAMERA_MODES.FREE
+    : CAMERA_MODES.FOLLOW
+}
+
+export function dampCameraYaw(currentYaw, targetYaw, amount) {
+  const normalizedAmount = THREE.MathUtils.clamp(amount, 0, 1)
+  const shortestTurn = shortestYawDelta(currentYaw, targetYaw)
+  return currentYaw + (shortestTurn * normalizedAmount)
+}
+
+export function shortestYawDelta(currentYaw, targetYaw) {
+  return Math.atan2(
+    Math.sin(targetYaw - currentYaw),
+    Math.cos(targetYaw - currentYaw),
+  )
+}
+
+export function updateFollowCameraYaw({
+  cameraYaw,
+  targetYaw,
+  delta,
+  movementActive,
+  idleDuration = 0,
+  recentering = false,
+  delay = CAMERA_RECENTER_DELAY,
+  deadZone = CAMERA_RECENTER_DEAD_ZONE,
+  followSpeed = CAMERA_RECENTER_SPEED,
+  finishThreshold = CAMERA_RECENTER_FINISH_THRESHOLD,
+}) {
+  const safeDelta = Number.isFinite(delta) ? Math.max(delta, 0) : 0
+  if (movementActive) {
+    return {
+      cameraYaw,
+      idleDuration: 0,
+      recentering: false,
+    }
+  }
+
+  const nextIdleDuration = Math.max(idleDuration, 0) + safeDelta
+  let nextRecentering = recentering
+  if (
+    !nextRecentering
+    && nextIdleDuration >= Math.max(delay, 0)
+    && Math.abs(shortestYawDelta(cameraYaw, targetYaw)) > Math.max(deadZone, 0)
+  ) {
+    nextRecentering = true
+  }
+
+  if (!nextRecentering) {
+    return {
+      cameraYaw,
+      idleDuration: nextIdleDuration,
+      recentering: false,
+    }
+  }
+
+  let nextCameraYaw = dampCameraYaw(
+    cameraYaw,
+    targetYaw,
+    1 - Math.exp(-Math.max(followSpeed, 0) * safeDelta),
+  )
+  if (
+    Math.abs(shortestYawDelta(nextCameraYaw, targetYaw))
+    <= Math.max(finishThreshold, 0)
+  ) {
+    nextCameraYaw = targetYaw
+    nextRecentering = false
+  }
+
+  return {
+    cameraYaw: nextCameraYaw,
+    idleDuration: nextIdleDuration,
+    recentering: nextRecentering,
+  }
+}
+
+export function resolveFollowHeading({
+  currentHeading,
+  avatarYaw,
+  movedX,
+  movedZ,
+}) {
+  const actualMovement = Math.hypot(movedX, movedZ)
+  return actualMovement > 0.00001 ? avatarYaw : currentHeading
+}
 
 export function resolveMovementInput({
   pressedKeys = [],
@@ -52,12 +149,14 @@ export function resolveMovementInput({
 }
 
 export function shouldStartCameraOrbit({
+  cameraMode = CAMERA_MODES.FOLLOW,
   button,
   pointerType,
   clientX,
   canvasLeft,
   canvasWidth,
 }) {
+  if (normalizeCameraMode(cameraMode) !== CAMERA_MODES.FREE) return false
   if (button !== 0) return false
   if (pointerType !== 'touch') return true
   if (!Number.isFinite(clientX) || !Number.isFinite(canvasWidth) || canvasWidth <= 0) {
@@ -191,6 +290,10 @@ export function createAvatarMovementController({
   let lastPointerX = 0
   let lastPointerY = 0
   let touchRunActive = false
+  let cameraMode = CAMERA_MODES.FOLLOW
+  let followHeading = avatarRoot.rotation.y
+  let followIdleDuration = 0
+  let followRecentering = false
 
   function onKeyDown(event) {
     const isMovementKey = MOVEMENT_KEYS.has(event.code)
@@ -271,6 +374,7 @@ export function createAvatarMovementController({
 
     const bounds = canvas.getBoundingClientRect()
     if (!shouldStartCameraOrbit({
+      cameraMode,
       button: event.button,
       pointerType: event.pointerType,
       clientX: event.clientX,
@@ -310,6 +414,8 @@ export function createAvatarMovementController({
   }
 
   function zoomCamera(event) {
+    if (cameraMode !== CAMERA_MODES.FREE) return
+
     event.preventDefault()
     cameraDistance = THREE.MathUtils.clamp(
       cameraDistance * Math.exp(event.deltaY * CAMERA_ZOOM_SPEED),
@@ -319,16 +425,39 @@ export function createAvatarMovementController({
   }
 
   function resetCamera() {
-    cameraYaw = startingYaw
+    cameraYaw = cameraMode === CAMERA_MODES.FOLLOW
+      ? avatarRoot.rotation.y
+      : startingYaw
     cameraPitch = THREE.MathUtils.clamp(
       startingPitch,
       MIN_CAMERA_PITCH,
       MAX_CAMERA_PITCH,
     )
     cameraDistance = startingCameraDistance
+    followHeading = avatarRoot.rotation.y
+    followIdleDuration = 0
+    followRecentering = false
     setCameraTarget(smoothedCameraTarget)
     camera.position.copy(getDesiredCameraPosition())
     camera.lookAt(smoothedCameraTarget)
+  }
+
+  function setCameraMode(value) {
+    const nextMode = normalizeCameraMode(value)
+    if (nextMode === cameraMode) return
+
+    cameraMode = nextMode
+    if (cameraMode !== CAMERA_MODES.FOLLOW) return
+
+    if (orbitPointerId !== null) {
+      const pointerId = orbitPointerId
+      orbitPointerId = null
+      orbitPointerType = null
+      if (canvas.hasPointerCapture?.(pointerId)) {
+        canvas.releasePointerCapture(pointerId)
+      }
+    }
+    resetCamera()
   }
 
   function update(delta) {
@@ -378,16 +507,35 @@ export function createAvatarMovementController({
       )
     }
 
+    const movedX = avatarRoot.position.x - previousX
+    const movedZ = avatarRoot.position.z - previousZ
+    const moving = Math.hypot(movedX, movedZ) > 0.00001
+    followHeading = resolveFollowHeading({
+      currentHeading: followHeading,
+      avatarYaw: avatarRoot.rotation.y,
+      movedX,
+      movedZ,
+    })
+
+    if (cameraMode === CAMERA_MODES.FOLLOW) {
+      const followState = updateFollowCameraYaw({
+        cameraYaw,
+        targetYaw: followHeading,
+        delta,
+        movementActive: movementInput.lengthSq() > 0,
+        idleDuration: followIdleDuration,
+        recentering: followRecentering,
+      })
+      cameraYaw = followState.cameraYaw
+      followIdleDuration = followState.idleDuration
+      followRecentering = followState.recentering
+    }
+
     const followAmount = 1 - Math.exp(-CAMERA_FOLLOW_SPEED * delta)
     setCameraTarget(cameraLookTarget)
     smoothedCameraTarget.lerp(cameraLookTarget, followAmount)
     camera.position.lerp(getDesiredCameraPosition(), followAmount)
     camera.lookAt(smoothedCameraTarget)
-
-    const moving = Math.hypot(
-      avatarRoot.position.x - previousX,
-      avatarRoot.position.z - previousZ,
-    ) > 0.00001
 
     return {
       moving,
@@ -427,7 +575,18 @@ export function createAvatarMovementController({
       touchRunActive = Boolean(running)
     },
     cancelTouchInput,
+    getCameraMode() {
+      return cameraMode
+    },
+    getCameraState() {
+      return {
+        avatarYaw: Number(avatarRoot.rotation.y.toFixed(3)),
+        cameraYaw: Number(cameraYaw.toFixed(3)),
+        mode: cameraMode,
+      }
+    },
     resetCamera,
+    setCameraMode,
     update,
     dispose() {
       window.removeEventListener('keydown', onKeyDown)

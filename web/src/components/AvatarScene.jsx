@@ -35,7 +35,10 @@ import {
 import {
   createClassroomCampusEnvironment,
 } from '../classroom/classroomCampusEnvironment.js'
-import { createAvatarMovementController } from '../classroom/avatarMovementController.js'
+import {
+  CAMERA_MODES,
+  createAvatarMovementController,
+} from '../classroom/avatarMovementController.js'
 import {
   createClassroomOcclusionController,
 } from '../classroom/classroomOcclusionController.js'
@@ -72,6 +75,7 @@ import {
 import {
   ControlsMenu,
   ExperienceEntryScreen,
+  MobileUtilityMenu,
   OrientationGate,
   VoiceReminder,
 } from './ExperienceUI.jsx'
@@ -101,6 +105,8 @@ const COLLISION_DEBUG_ENABLED = import.meta.env.DEV
   && PAGE_PARAMETERS.get('debugCollisions') === '1'
 const ANIMATION_PREVIEW_ENABLED = import.meta.env.DEV
   && PAGE_PARAMETERS.get('testAnimations') === '1'
+const PHONE_DEBUG_ENABLED = import.meta.env.DEV
+  && PAGE_PARAMETERS.get('debugPhone') === '1'
 
 function readPhoneViewport() {
   const mobileUserAgent = navigator.userAgentData?.mobile === true
@@ -109,7 +115,8 @@ function readPhoneViewport() {
   return classifyPhoneViewport({
     width: window.innerWidth,
     height: window.innerHeight,
-    coarsePointer: window.matchMedia('(pointer: coarse)').matches,
+    coarsePointer: PHONE_DEBUG_ENABLED
+      || window.matchMedia('(pointer: coarse)').matches,
     touchCapable: navigator.maxTouchPoints > 0,
     mobileUserAgent,
   })
@@ -149,12 +156,14 @@ export default function AvatarScene() {
   const [phoneViewport, setPhoneViewport] = useState(readPhoneViewport)
   const [entryStarted, setEntryStarted] = useState(false)
   const [controlsOpen, setControlsOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [vibePickerOpen, setVibePickerOpen] = useState(false)
   const [selectedVibe, setSelectedVibe] = useState(null)
   const [voiceReminderShown, setVoiceReminderShown] = useState(false)
   const [voiceReminderVisible, setVoiceReminderVisible] = useState(false)
   const [likedPanelOpen, setLikedPanelOpen] = useState(false)
   const [transcriptOpen, setTranscriptOpen] = useState(false)
+  const [cameraMode, setCameraMode] = useState(CAMERA_MODES.FOLLOW)
   const [inspectedClassroomMesh, setInspectedClassroomMesh] = useState(null)
   const [classroomInventory, setClassroomInventory] = useState([])
   const [classroomCollisionZones, setClassroomCollisionZones] = useState([])
@@ -363,6 +372,7 @@ export default function AvatarScene() {
       })
       movementControllerRef.current = movementController
       resetCameraRef.current = movementController.resetCamera
+      movementController.setCameraMode(cameraMode)
       if (COLLISION_DEBUG_ENABLED) {
         window.__RIRI_MOVEMENT__ = movementController
       }
@@ -970,6 +980,7 @@ export default function AvatarScene() {
   function toggleTranscriptPanel() {
     const nextOpen = !transcriptOpen
     setTranscriptOpen(nextOpen)
+    setMobileMenuOpen(false)
     if (nextOpen) {
       setLikedPanelOpen(false)
       setControlsOpen(false)
@@ -980,6 +991,7 @@ export default function AvatarScene() {
   function toggleLikedPanel() {
     const nextOpen = !likedPanelOpen
     setLikedPanelOpen(nextOpen)
+    setMobileMenuOpen(false)
     if (nextOpen) {
       setTranscriptOpen(false)
       setControlsOpen(false)
@@ -1004,6 +1016,7 @@ export default function AvatarScene() {
     setTranscriptOpen(false)
     setLikedPanelOpen(false)
     setVibePickerOpen(false)
+    setMobileMenuOpen(false)
     setControlsOpen(true)
   }
 
@@ -1019,6 +1032,7 @@ export default function AvatarScene() {
     const nextOpen = !vibePickerOpen
     setVibePickerOpen(nextOpen)
     if (nextOpen) {
+      setMobileMenuOpen(false)
       setControlsOpen(false)
       setTranscriptOpen(false)
       setLikedPanelOpen(false)
@@ -1028,6 +1042,32 @@ export default function AvatarScene() {
   function resetCamera(event) {
     resetCameraRef.current?.()
     event?.currentTarget?.blur()
+  }
+
+  function changeCameraMode(value) {
+    const nextMode = value === CAMERA_MODES.FREE
+      ? CAMERA_MODES.FREE
+      : CAMERA_MODES.FOLLOW
+    setCameraMode(nextMode)
+    movementControllerRef.current?.setCameraMode(nextMode)
+  }
+
+  function toggleMobileMenu() {
+    const nextOpen = !mobileMenuOpen
+    setMobileMenuOpen(nextOpen)
+    if (!nextOpen) return
+
+    setControlsOpen(false)
+    setTranscriptOpen(false)
+    setLikedPanelOpen(false)
+    setVibePickerOpen(false)
+  }
+
+  function returnToMobileMenu() {
+    setControlsOpen(false)
+    setTranscriptOpen(false)
+    setLikedPanelOpen(false)
+    setMobileMenuOpen(true)
   }
 
   const gameplayUiVisible = entryStarted
@@ -1071,8 +1111,13 @@ export default function AvatarScene() {
         aria-label="Liked songs"
         data-open={likedPanelOpen}
       >
-        <div className="panel-heading">
-          Liked Songs ({pickedSongs.length})
+        <div className="panel-heading panel-heading--with-action">
+          <span>Liked Songs ({pickedSongs.length})</span>
+          {isPhoneExperience && (
+            <button className="text-button" onClick={returnToMobileMenu}>
+              Back
+            </button>
+          )}
         </div>
 
         {pickedSongs.length === 0 && (
@@ -1133,7 +1178,12 @@ export default function AvatarScene() {
       >
         <div className="transcript-heading">
           <strong>Conversation</strong>
-          <button className="text-button" onClick={() => setTranscriptOpen(false)}>Close</button>
+          <button
+            className="text-button"
+            onClick={isPhoneExperience ? returnToMobileMenu : () => setTranscriptOpen(false)}
+          >
+            {isPhoneExperience ? 'Back' : 'Close'}
+          </button>
         </div>
         <div className="transcript-entry transcript-entry--assistant" aria-label={"Riri\u2019s opening question"}>
           <div className="transcript-bubble transcript-bubble--assistant">
@@ -1383,18 +1433,32 @@ export default function AvatarScene() {
       {gameplayUiVisible && (
         <>
           <ControlsMenu
+            cameraMode={cameraMode}
             isPhone={isPhoneExperience}
             isStatic={!APP_CONFIG.usesBackend}
             movementReady={movementReady}
-            onClose={() => setControlsOpen(false)}
+            onCameraModeChange={changeCameraMode}
+            onClose={isPhoneExperience ? returnToMobileMenu : () => setControlsOpen(false)}
             onResetCamera={resetCamera}
             onToggleVoice={() => {
               setVoiceEnabled(value => !value)
               setVoiceReminderVisible(false)
             }}
             open={controlsOpen}
+            closeLabel={isPhoneExperience ? 'Back' : 'Close'}
             voiceEnabled={voiceEnabled}
           />
+
+          {isPhoneExperience && (
+            <MobileUtilityMenu
+              likedCount={pickedSongs.length}
+              onClose={() => setMobileMenuOpen(false)}
+              onOpenControls={openControls}
+              onOpenLiked={toggleLikedPanel}
+              onOpenTranscript={toggleTranscriptPanel}
+              open={mobileMenuOpen}
+            />
+          )}
 
           {voiceReminderVisible && (
             <VoiceReminder
@@ -1469,27 +1533,39 @@ export default function AvatarScene() {
             )}
 
             <div className="gameplay-actions__utilities">
-              <button
-                className="button button--secondary button--compact"
-                aria-expanded={transcriptOpen}
-                onClick={toggleTranscriptPanel}
-              >
-                Transcript
-              </button>
-              <button
-                className="button button--secondary button--compact"
-                aria-expanded={likedPanelOpen}
-                onClick={toggleLikedPanel}
-              >
-                Liked ({pickedSongs.length})
-              </button>
-              <button
-                className="button button--secondary button--compact"
-                aria-expanded={controlsOpen}
-                onClick={toggleControlsMenu}
-              >
-                Controls
-              </button>
+              {isPhoneExperience ? (
+                <button
+                  className="button button--secondary button--compact"
+                  aria-expanded={mobileMenuOpen}
+                  onClick={toggleMobileMenu}
+                >
+                  Menu
+                </button>
+              ) : (
+                <>
+                  <button
+                    className="button button--secondary button--compact"
+                    aria-expanded={transcriptOpen}
+                    onClick={toggleTranscriptPanel}
+                  >
+                    Transcript
+                  </button>
+                  <button
+                    className="button button--secondary button--compact"
+                    aria-expanded={likedPanelOpen}
+                    onClick={toggleLikedPanel}
+                  >
+                    Liked ({pickedSongs.length})
+                  </button>
+                  <button
+                    className="button button--secondary button--compact"
+                    aria-expanded={controlsOpen}
+                    onClick={toggleControlsMenu}
+                  >
+                    Controls
+                  </button>
+                </>
+              )}
             </div>
           </section>
         </>

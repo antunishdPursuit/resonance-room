@@ -13,12 +13,11 @@ function ControlGuide({ isPhone }) {
   const controls = isPhone
     ? [
         ['Move Riri', 'Drag to move. Push to the edge to run.'],
-        ['Look around', 'Drag on the right side of the classroom.'],
+        ['Camera', 'The camera follows Riri automatically.'],
       ]
     : [
         ['Move Riri', 'Use WASD or the arrow keys. Hold Shift to run.'],
-        ['Look around', 'Drag anywhere in the classroom.'],
-        ['Zoom', 'Use the mouse wheel.'],
+        ['Camera', 'The camera follows Riri automatically.'],
       ]
 
   return (
@@ -152,9 +151,12 @@ export function OrientationGate() {
 }
 
 export function ControlsMenu({
+  cameraMode,
+  closeLabel = 'Close',
   isPhone,
   isStatic,
   movementReady,
+  onCameraModeChange,
   onClose,
   onResetCamera,
   onToggleVoice,
@@ -163,11 +165,13 @@ export function ControlsMenu({
 }) {
   if (!open) return null
 
+  const freeCamera = cameraMode === 'free'
+
   return (
     <section className="controls-menu" aria-label="Controls">
       <div className="controls-menu__heading">
         <strong>Controls</strong>
-        <button className="text-button" onClick={onClose}>Close</button>
+        <button className="text-button" onClick={onClose}>{closeLabel}</button>
       </div>
 
       <dl className="controls-menu__guide">
@@ -176,9 +180,35 @@ export function ControlsMenu({
           <dt>Run</dt>
           <dd>{isPhone ? 'Push the joystick to its outer edge' : 'Hold Shift while moving'}</dd>
         </div>
-        <div><dt>Look</dt><dd>{isPhone ? 'Drag the right side' : 'Drag the classroom'}</dd></div>
-        {!isPhone && <div><dt>Zoom</dt><dd>Use the mouse wheel</dd></div>}
+        {!freeCamera && <div><dt>Camera</dt><dd>Recenters behind Riri after movement</dd></div>}
+        {freeCamera && <div><dt>Look</dt><dd>{isPhone ? 'Drag the right side' : 'Drag the classroom'}</dd></div>}
+        {freeCamera && !isPhone && <div><dt>Zoom</dt><dd>Use the mouse wheel</dd></div>}
       </dl>
+
+      <fieldset className="controls-menu__camera">
+        <legend>Camera mode</legend>
+        <div className="controls-menu__camera-options">
+          <button
+            className={`button button--secondary ${!freeCamera ? 'button--active' : ''}`}
+            aria-pressed={!freeCamera}
+            onClick={() => onCameraModeChange('follow')}
+          >
+            Follow
+          </button>
+          <button
+            className={`button button--secondary ${freeCamera ? 'button--active' : ''}`}
+            aria-pressed={freeCamera}
+            onClick={() => onCameraModeChange('free')}
+          >
+            Free
+          </button>
+        </div>
+        <p>
+          {freeCamera
+            ? 'Move the view yourself. Follow restores the fixed camera.'
+            : 'Recommended. The view stays stable while you move, then recenters behind Riri.'}
+        </p>
+      </fieldset>
 
       <div className="controls-menu__actions">
         <button
@@ -188,13 +218,15 @@ export function ControlsMenu({
         >
           Voice: {voiceEnabled ? 'On' : 'Off'}
         </button>
-        <button
-          className="button button--secondary"
-          disabled={!movementReady}
-          onClick={onResetCamera}
-        >
-          Reset camera
-        </button>
+        {freeCamera && (
+          <button
+            className="button button--secondary"
+            disabled={!movementReady}
+            onClick={onResetCamera}
+          >
+            Reset camera
+          </button>
+        )}
       </div>
 
       <p className="controls-menu__demo" role="note">
@@ -203,6 +235,37 @@ export function ControlsMenu({
           ? 'Recommendations use the built-in 36-song catalog. Voice stays in the browser.'
           : 'Recommendations and optional speech use FastAPI, with browser voice available.'}
       </p>
+    </section>
+  )
+}
+
+export function MobileUtilityMenu({
+  likedCount,
+  onClose,
+  onOpenControls,
+  onOpenLiked,
+  onOpenTranscript,
+  open,
+}) {
+  if (!open) return null
+
+  return (
+    <section className="mobile-utility-menu" aria-label="Menu">
+      <div className="mobile-utility-menu__heading">
+        <strong>Menu</strong>
+        <button className="text-button" onClick={onClose}>Close</button>
+      </div>
+      <div className="mobile-utility-menu__actions">
+        <button className="button button--secondary" onClick={onOpenTranscript}>
+          Transcript
+        </button>
+        <button className="button button--secondary" onClick={onOpenLiked}>
+          Liked songs ({likedCount})
+        </button>
+        <button className="button button--secondary" onClick={onOpenControls}>
+          Controls
+        </button>
+      </div>
     </section>
   )
 }
