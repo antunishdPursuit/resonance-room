@@ -90,7 +90,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-LASTFM_BASE = "http://ws.audioscrobbler.com/2.0/"
+LASTFM_BASE = "https://ws.audioscrobbler.com/2.0/"
 LASTFM_HEADERS = {
     "User-Agent": "ResonanceRoom/1.0 (https://github.com/antunishdPursuit/resonance-room)",
 }
@@ -155,7 +155,9 @@ async def fetch_tracks(tag: str, limit: int = 6) -> list:
     """Call Last.fm tag.gettoptracks and return the track list."""
     api_key = os.getenv("LASTFM_API_KEY")
     try:
-        async with httpx.AsyncClient(timeout=PROVIDER_TIMEOUT, headers=LASTFM_HEADERS) as http:
+        async with httpx.AsyncClient(
+            timeout=PROVIDER_TIMEOUT, headers=LASTFM_HEADERS, follow_redirects=False
+        ) as http:
             resp = await http.get(LASTFM_BASE, params={
                 "method":  "tag.gettoptracks",
                 "tag":     tag.lower(),
