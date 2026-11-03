@@ -2,7 +2,7 @@ import asyncio
 from types import SimpleNamespace
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import ASGITransport, AsyncClient, MockTransport, Response
 
 from backend import main as api
 
@@ -114,6 +114,36 @@ def test_chat_awaits_async_anthropic_client(monkeypatch):
 def test_lastfm_requests_identify_the_application():
     assert "User-Agent" in api.LASTFM_HEADERS
     assert "ResonanceRoom" in api.LASTFM_HEADERS["User-Agent"]
+
+
+@pytest.mark.parametrize("redirect", [False, True])
+def test_lastfm_credentials_use_tls_without_following_redirects(monkeypatch, redirect):
+    requests = []
+    tracks = [{"name": "Example", "artist": {"name": "Artist"}}]
+
+    def handle_request(outgoing):
+        requests.append(outgoing)
+        assert outgoing.url.scheme == "https"
+        assert outgoing.url.host == "ws.audioscrobbler.com"
+        assert outgoing.url.params["api_key"] == "test-lastfm-key"
+        assert outgoing.url.params["tag"] == "jazz"
+        if redirect:
+            return Response(302, headers={"Location": "http://example.com/collect"})
+        return Response(200, json={"tracks": {"track": tracks}})
+
+    monkeypatch.setenv("LASTFM_API_KEY", "test-lastfm-key")
+    monkeypatch.setattr(
+        api.httpx,
+        "AsyncClient",
+        lambda **kwargs: AsyncClient(transport=MockTransport(handle_request), **kwargs),
+    )
+
+    if redirect:
+        with pytest.raises(api.ProviderError, match="Last.fm request failed"):
+            asyncio.run(api.fetch_tracks("Jazz"))
+    else:
+        assert asyncio.run(api.fetch_tracks("Jazz")) == tracks
+    assert len(requests) == 1
 
 
 def test_local_frontend_origins_cover_supported_dev_urls():
