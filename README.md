@@ -152,6 +152,25 @@ npm.cmd audit --audit-level=low
 
 Automated checks do not prove visual quality, recommendation usefulness, real-phone behavior, provider availability, or a successful public deployment. Verify those paths separately when they are in scope.
 
+## Local quality checks
+
+Install the pinned tools in the project environments: run `npm ci` from `web`,
+and use the project virtual environment to run
+`python -m pip install --require-hashes -r requirements.lock -r requirements-quality.lock`.
+From the repository root, `node web/quality.mjs` runs ESLint (including
+React Hook rules), Ruff linting, and formatting checks. Tests and builds remain
+separate verification commands above.
+
+Prettier and Ruff formatting apply to changed/new files; untouched files migrate
+gradually. Frontend text files use LF endings on every platform through `.gitattributes`.
+The local baseline is `HEAD`. Supply `--base REF` to check a complete
+branch or commit range. GitHub Actions sets the baseline to the previous push
+head or PR base and fetches full history; an unavailable baseline fails the
+check. A manual workflow run uses its current head as the formatting baseline.
+Linters always inspect the full relevant source tree. Generated files and
+licensed assets are excluded. The scoped minimatch 11.0.1 overrides patch the
+ESLint dependency advisory; JSX/glob behavior is covered by quality tests.
+
 ## Privacy and Data
 
 - The public static mode does not require an account.

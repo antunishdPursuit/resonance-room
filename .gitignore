@@ -34,3 +34,4 @@ coverage/
 
 # Tool caches
 .vite/
+.ruff_cache/
