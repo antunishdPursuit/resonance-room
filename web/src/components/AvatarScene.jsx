@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm'
@@ -136,7 +136,6 @@ export default function AvatarScene() {
   const [profileBuilt, setProfileBuilt] = useState(false)
   const [voiceEnabled, setVoiceEnabled] = useState(false)
   const [useElevenLabs, setUseElevenLabs] = useState(false)
-  const [elevenLabsAvailable, setElevenLabsAvailable] = useState(false)
   const [phoneViewport, setPhoneViewport] = useState(readPhoneViewport)
   const [entryStarted, setEntryStarted] = useState(false)
   const [controlsOpen, setControlsOpen] = useState(false)
@@ -217,9 +216,9 @@ export default function AvatarScene() {
     .slice()
     .reverse()
     .find((message) => Array.isArray(message.songs) && message.songs.length > 0)
-  const latestRecommendations = latestRecommendationMessage?.songs ?? []
 
   useEffect(() => {
+    const latestRecommendations = latestRecommendationMessage?.songs ?? []
     recommendationsRef.current = latestRecommendations
     recommendationBoardRef.current?.update(latestRecommendations)
   }, [latestRecommendationMessage])
@@ -229,7 +228,6 @@ export default function AvatarScene() {
 
     BACKEND_VOICE.checkAvailability().then((available) => {
       if (cancelled) return
-      setElevenLabsAvailable(available)
       setUseElevenLabs(available)
       useElevenlabsRef.current = available
     })
@@ -239,6 +237,8 @@ export default function AvatarScene() {
     }
   }, [])
 
+  const sendProfileMessage = useEffectEvent((text) => sendMessage(text))
+
   useEffect(() => {
     if (pickedSongs.length < 5 || profileBuilt) return
 
@@ -246,7 +246,7 @@ export default function AvatarScene() {
       setProfileBuilt(true)
       const songList = pickedSongs.map((s) => `"${s.title}" by ${s.artist}`).join(', ')
       const autoMsg = `I just picked 5 songs I love: ${songList}. Based on these picks, what can you tell about my music taste? Please recommend new songs I haven't heard — do not suggest any of the songs I just listed.`
-      sendMessage(autoMsg)
+      sendProfileMessage(autoMsg)
       return
     }
 
@@ -365,7 +365,7 @@ export default function AvatarScene() {
       })
       movementControllerRef.current = movementController
       resetCameraRef.current = movementController.resetCamera
-      movementController.setCameraMode(cameraMode)
+      movementController.setCameraMode(CAMERA_MODES.FOLLOW)
       if (COLLISION_DEBUG_ENABLED) {
         window.__RIRI_MOVEMENT__ = movementController
       }
