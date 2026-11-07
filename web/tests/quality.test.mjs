@@ -27,7 +27,7 @@ test('format selection excludes generated files, assets and the lockfile', () =>
   assert.deepEqual(selectFiles(files, 'python'), files.slice(-3))
 })
 
-test('format selection includes all changed commits, staged, unstaged and new files', () => {
+test('format selection handles divergent bases, commits, staged, unstaged and new files', () => {
   const parent = realpathSync(os.tmpdir())
   const directory = realpathSync(mkdtempSync(path.join(parent, 'resonance-quality-')))
   function git(...args) {
@@ -41,25 +41,31 @@ test('format selection includes all changed commits, staged, unstaged and new fi
     git('config', 'user.email', 'quality@example.invalid')
     writeFileSync(path.join(directory, 'first.js'), 'initial\n')
     writeFileSync(path.join(directory, 'removed.js'), 'initial\n')
-    git('add', 'first.js', 'removed.js')
+    writeFileSync(path.join(directory, 'main-only.js'), 'initial\n')
+    writeFileSync(path.join(directory, 'unstaged.js'), 'initial\n')
+    git('add', 'first.js', 'removed.js', 'main-only.js', 'unstaged.js')
     git('commit', '-m', 'test: seed quality fixture')
     const base = git('rev-parse', 'HEAD')
+    git('checkout', '-b', 'feature')
     writeFileSync(path.join(directory, 'first.js'), 'committed\n')
     git('add', 'first.js')
     git('commit', '-m', 'test: first changed commit')
     writeFileSync(path.join(directory, 'second.js'), 'second commit\n')
     git('add', 'second.js')
     git('commit', '-m', 'test: second changed commit')
+    git('checkout', 'main')
+    writeFileSync(path.join(directory, 'main-only.js'), 'changed only on main\n')
+    git('add', 'main-only.js')
+    git('commit', '-m', 'test: advance comparison branch')
+    git('checkout', 'feature')
+    writeFileSync(path.join(directory, 'unstaged.js'), 'unstaged\n')
     writeFileSync(path.join(directory, 'staged.js'), 'staged\n')
     git('add', 'staged.js')
     writeFileSync(path.join(directory, 'new.js'), 'new\n')
     git('rm', 'removed.js')
-    assert.deepEqual(changedFiles(base, directory).sort(), [
-      'first.js',
-      'new.js',
-      'second.js',
-      'staged.js',
-    ])
+    const expected = ['first.js', 'new.js', 'second.js', 'staged.js', 'unstaged.js']
+    assert.deepEqual(changedFiles(base, directory).sort(), expected)
+    assert.deepEqual(changedFiles('main', directory).sort(), expected)
     assert.throws(() => changedFiles('missing-baseline', directory), /Cannot determine/)
   } finally {
     assert.equal(path.dirname(directory), parent)

@@ -24,8 +24,9 @@ export function changedFiles(base, cwd = root) {
   // An initial push or manual run without a base checks the complete tracked tree.
   const all = !base || /^0+$/.test(base)
   if (!all) git(['rev-parse', '--verify', `${base}^{commit}`], cwd)
+  const ancestor = all ? null : git(['merge-base', base, 'HEAD'], cwd).trim()
   const tracked = git(
-    all ? ['ls-files', '-z'] : ['diff', '--name-only', '-z', '--diff-filter=ACMR', base, '--'],
+    all ? ['ls-files', '-z'] : ['diff', '--name-only', '-z', '--diff-filter=ACMR', ancestor, '--'],
     cwd,
   )
   const untracked = git(['ls-files', '--others', '--exclude-standard', '-z'], cwd)
