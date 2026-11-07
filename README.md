@@ -166,7 +166,8 @@ gradually. Frontend text files use LF endings on every platform through `.gitatt
 The local baseline is `HEAD`. Supply `--base REF` to check a complete
 branch or commit range. GitHub Actions sets the baseline to the previous push
 head or PR base and fetches full history; an unavailable baseline fails the
-check. A manual workflow run uses its current head as the formatting baseline.
+check. A manual workflow run compares against `origin/main` by default; its
+`base` input can select another Git ref available in the checkout.
 Linters always inspect the full relevant source tree. Generated files and
 licensed assets are excluded. The scoped minimatch 11.0.1 overrides patch the
 ESLint dependency advisory; JSX/glob behavior is covered by quality tests.

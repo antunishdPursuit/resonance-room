@@ -5,12 +5,18 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      base:
+        description: Git ref to compare for changed-file formatting
+        required: true
+        default: origin/main
+        type: string
 
 permissions:
   contents: read
 
 env:
-  QUALITY_BASE: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
+  QUALITY_BASE: ${{ github.event.pull_request.base.sha || github.event.before || inputs.base || github.sha }}
 
 concurrency:
   group: quality-${{ github.ref }}
