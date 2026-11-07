@@ -7,7 +7,7 @@ const config = createAppConfig({
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL,
 })
 
-export default function HomePage({ onEnter }) {
+export default function HomePage({ onEnter, returning = false }) {
   const [aboutOpen, setAboutOpen] = useState(false)
   const about = useRef(null)
 
@@ -33,7 +33,11 @@ export default function HomePage({ onEnter }) {
               Room
             </h1>
             <p className="home__intro">A small experiment in music discovery.</p>
-            <button className="button button--primary home__enter" onClick={onEnter}>
+            <button
+              className="button button--primary home__enter"
+              onClick={onEnter}
+              autoFocus={returning}
+            >
               Enter the room
             </button>
             <p className="home__promise">

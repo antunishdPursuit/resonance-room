@@ -70,7 +70,11 @@ import {
   VoiceReminder,
 } from './ExperienceUI.jsx'
 import { MobileTouchControls } from './MobileExperience.jsx'
-import { classifyPhoneViewport, shouldShowMobileControls } from '../ui/mobileControls.js'
+import {
+  classifyPhoneViewport,
+  getEntryState,
+  shouldShowMobileControls,
+} from '../ui/mobileControls.js'
 
 const APP_CONFIG = createAppConfig({
   mode: import.meta.env.VITE_APP_MODE,
@@ -106,7 +110,7 @@ function readPhoneViewport() {
   })
 }
 
-export default function AvatarScene() {
+export default function AvatarScene({ onBackHome }) {
   const canvasRef = useRef(null)
   const vrmRef = useRef(null)
   const speakRef = useRef(null)
@@ -159,6 +163,7 @@ export default function AvatarScene() {
   const [animationPreviewReady, setAnimationPreviewReady] = useState(false)
   const [animationPreviewStatus, setAnimationPreviewStatus] = useState('Loading animations…')
   const [classroomReady, setClassroomReady] = useState(false)
+  const [roomLoadFailed, setRoomLoadFailed] = useState(false)
   const [openingGreetingReady, setOpeningGreetingReady] = useState(false)
   const messagesRef = useRef([])
   const recommendationsRef = useRef([])
@@ -167,7 +172,8 @@ export default function AvatarScene() {
   const useElevenlabsRef = useRef(false)
   const isPhoneExperience = phoneViewport.isPhone
   const isPhoneLandscape = phoneViewport.isLandscape
-  const experienceAssetsReady = classroomReady && openingGreetingReady && movementReady
+  const experienceAssetsReady =
+    !roomLoadFailed && classroomReady && openingGreetingReady && movementReady
   const mobileControlsActive = shouldShowMobileControls({
     isPhone: isPhoneExperience,
     isLandscape: isPhoneLandscape,
@@ -321,6 +327,17 @@ export default function AvatarScene() {
     }
   }
 
+  const enterWhenReady = useEffectEvent(handleReady)
+  const entryState = getEntryState({
+    requiresLandscape: isPhoneExperience,
+    isLandscape: isPhoneLandscape,
+    assetsReady: experienceAssetsReady,
+    entryStarted,
+  })
+  useEffect(() => {
+    if (entryState === 'ready') enterWhenReady()
+  }, [entryState])
+
   useEffect(
     () => () => {
       clearOpeningTimers()
@@ -424,7 +441,10 @@ export default function AvatarScene() {
     loader.load(
       '/Classroom/scene.gltf',
       (gltf) => {
-        if (disposed) return
+        if (disposed) {
+          VRMUtils.deepDispose(gltf.scene)
+          return
+        }
 
         scene.add(gltf.scene)
         recommendationBoard = createClassroomRecommendationBoard()
@@ -496,7 +516,7 @@ export default function AvatarScene() {
       (err) => {
         if (!disposed) {
           console.error('Classroom load error:', err)
-          setClassroomReady(true)
+          setRoomLoadFailed(true)
         }
       },
     )
@@ -533,7 +553,10 @@ export default function AvatarScene() {
     loader.load(
       '/Riri.vrm',
       (gltf) => {
-        if (disposed) return
+        if (disposed) {
+          VRMUtils.deepDispose(gltf.scene)
+          return
+        }
 
         const vrm = gltf.userData.vrm
         disableUnwantedSpringBones(vrm)
@@ -583,6 +606,7 @@ export default function AvatarScene() {
               console.error(
                 'Animation load error: a required idle, talking, walking, or running clip was not found.',
               )
+              setRoomLoadFailed(true)
               return
             }
 
@@ -611,6 +635,8 @@ export default function AvatarScene() {
               console.error(
                 `Opening greeting load error: ${AVATAR_ANIMATION_ASSIGNMENTS.openingGreeting} was not found.`,
               )
+              setRoomLoadFailed(true)
+              return
             }
             setOpeningGreetingReady(true)
 
@@ -678,13 +704,19 @@ export default function AvatarScene() {
           },
           undefined,
           (err) => {
-            if (!disposed) console.error('Walk animation load error:', err)
+            if (!disposed) {
+              console.error('Walk animation load error:', err)
+              setRoomLoadFailed(true)
+            }
           },
         )
       },
       undefined,
       (err) => {
-        if (!disposed) console.error('VRM load error:', err)
+        if (!disposed) {
+          console.error('VRM load error:', err)
+          setRoomLoadFailed(true)
+        }
       },
     )
 
@@ -807,6 +839,7 @@ export default function AvatarScene() {
       boardInteractionActionRef.current = null
       delete window.__RIRI_MOVEMENT__
       collisionDebugView?.dispose()
+      if (campusEnvironment) scene.remove(campusEnvironment.object3d)
       campusEnvironment?.dispose()
       campusEnvironment = null
       recommendationBoardInteraction?.dispose()
@@ -815,6 +848,8 @@ export default function AvatarScene() {
         recommendationBoard.dispose()
       }
       recommendationBoardRef.current = null
+      VRMUtils.deepDispose(scene)
+      vrmRef.current = null
       renderer.dispose()
     }
   }, [])
@@ -1040,13 +1075,11 @@ export default function AvatarScene() {
       {/* Loading screen */}
       {loaderVisible && (
         <ExperienceEntryScreen
-          assetsReady={experienceAssetsReady}
-          entryStarted={entryStarted}
           fading={loaderFading}
           isPhone={isPhoneExperience}
           isLandscape={isPhoneLandscape}
-          isStatic={!APP_CONFIG.usesBackend}
-          onReady={handleReady}
+          failed={roomLoadFailed}
+          onBack={onBackHome}
         />
       )}
 
@@ -1103,6 +1136,7 @@ export default function AvatarScene() {
       </div>
       <div
         className="visually-hidden"
+        aria-hidden={!gameplayUiVisible}
         role={latestRiriMessage?.kind === 'error' ? 'alert' : 'status'}
         aria-live={latestRiriMessage?.kind === 'error' ? 'assertive' : 'polite'}
         aria-atomic="true"
