@@ -140,10 +140,10 @@ export function createWallDetails(classroomMeshes, { createTexture = createArtwo
     if (has(6))
       panel('Auxiliary chalk music', [-3.097, 1.648, 4.749], 1.25, 1.1, Math.PI, [0, 1], false)
     if (has(52)) {
-      // Mount below the 1.75m corridor glazing, well forward of the rear doorway.
-      panel('Framed music phrase', [-3.91, 1.35, 3.25], 0.4, 0.48, Math.PI / 2, [1, 1], true)
-      panel('Framed equalizer', [-3.91, 1.35, 2.65], 0.4, 0.48, Math.PI / 2, [0, 0], true)
-      panel('Classroom notices', [-3.91, 1.3, 1.72], 0.64, 0.62, Math.PI / 2, [1, 0], true)
+      // Keep the artwork above the lowered corridor glazing and below the ceiling.
+      panel('Framed music phrase', [-3.91, 2.75, 3.25], 0.4, 0.48, Math.PI / 2, [1, 1], true)
+      panel('Framed equalizer', [-3.91, 2.75, 2.65], 0.4, 0.48, Math.PI / 2, [0, 0], true)
+      panel('Classroom notices', [-3.91, 2.75, 1.72], 0.54, 0.52, Math.PI / 2, [1, 0], true)
     }
     if (frames.length) {
       const mesh = new THREE.InstancedMesh(cube, frameMaterial, frames.length)

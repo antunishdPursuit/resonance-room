@@ -17,13 +17,14 @@ test('corridor windows have real openings above furniture while retaining camera
   assert.ok(panes.length >= 2)
   for (const pane of panes) {
     const box = new THREE.Box3().setFromObject(pane)
-    assert.ok(box.min.y >= 1.75)
+    assert.ok(Math.abs(box.min.y - 1.35) < 0.00001)
+    assert.ok(Math.abs(box.max.y - 2.4) < 0.00001)
     assert.ok(
       box.min.z >
         campus.placement.classroom.door.centerZ + campus.placement.classroom.door.width / 2,
     )
     const ray = new THREE.Raycaster(
-      new THREE.Vector3(0, pane.position.y, pane.position.z - 0.2),
+      new THREE.Vector3(0, 1.6, pane.position.z - 0.2),
       new THREE.Vector3(-1, 0, 0),
     )
     const hits = ray.intersectObjects(

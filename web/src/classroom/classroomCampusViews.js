@@ -43,8 +43,8 @@ export function completeClassroomCampusViews(campus) {
     const count = Math.max(1, Math.floor(length / 2.2))
     const bay = length / count
     const width = bay * 0.72
-    const bottom = room.floorY + 1.75
-    const top = Math.min(room.floorY + 2.8, room.ceilingY - 0.18)
+    const bottom = room.floorY + 1.35
+    const top = Math.min(room.floorY + 2.4, room.ceilingY - 0.18)
     const middle = (bottom + top) / 2
     box(
       'Corridor window lower wall',
