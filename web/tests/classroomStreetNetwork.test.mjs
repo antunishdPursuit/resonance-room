@@ -51,6 +51,13 @@ for (const length of [10, 16]) {
       ),
     )
     const facades = network.object3d.getObjectByName('Neighborhood corner buildings')
+    // The lot beside the far corner closes the street-level gap from the left window.
+    for (const offset of [13.5, 15, 17]) {
+      const origin = new THREE.Vector3(bounds.max.x - 0.45, 1.65, -3.4)
+      const target = new THREE.Vector3(roadX + offset, 1.65, junctions[0] - 8.1)
+      const ray = new THREE.Raycaster(origin, target.sub(origin).normalize(), 0, 40)
+      assert.ok(ray.intersectObject(facades).length > 0, 'Street-level gap exposes the sky')
+    }
     for (const z of junctions) {
       // Facing each junction, the stop bar belongs to the incoming right-hand lane.
       for (const side of [-1, 1]) {

@@ -67,6 +67,13 @@ export function createStreetLayout({ classroom, building, road }) {
         height: 4.8 + (side + 1) * 1.2,
       })
   }
+  buildings.push({
+    x: x + half + walk + 14,
+    z: junctions[0] - (half + walk + 5),
+    width: 8,
+    depth: 6,
+    height: 6.6,
+  })
   return {
     streets,
     sidewalks,
