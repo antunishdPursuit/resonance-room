@@ -27,6 +27,21 @@ export default function RoomLoading({ failed = false, rotate = false, fading = f
                 ? 'This is taking a while. You can return home and try again.'
                 : 'Loading Riri and the classroom.'}
         </p>
+        {!failed && (
+          <section className="room-loading__guide" aria-labelledby="entry-guide-title">
+            <h2 id="entry-guide-title">Before You Enter</h2>
+            <ul>
+              <li>Move Riri with WASD or the arrow keys. Hold Shift to run.</li>
+              <li>On touch screens, use the joystick; push to its outer edge to run.</li>
+              <li>
+                Small touch screens need landscape. Larger tablets can use either orientation.
+              </li>
+              <li>
+                The camera follows Riri automatically. Voice is off until you enable it in Controls.
+              </li>
+            </ul>
+          </section>
+        )}
         <div className="room-loading__actions">
           {failed && (
             <button className="button button--primary" onClick={() => window.location.reload()}>

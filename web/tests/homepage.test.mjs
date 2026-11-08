@@ -30,7 +30,7 @@ test('mixed-input controls retain touch, keyboard and mouse instructions', async
 })
 
 for (const mode of ['static', 'backend']) {
-  test(`homepage describes the actual ${mode} recommendation controls`, async () => {
+  test(`homepage keeps ${mode} explanations inside About`, async () => {
     const server = await createServer({
       root,
       server: { middlewareMode: true },
@@ -40,18 +40,52 @@ for (const mode of ['static', 'backend']) {
     try {
       const { default: HomePage } = await server.ssrLoadModule('/src/components/HomePage.jsx')
       const markup = renderToStaticMarkup(createElement(HomePage, { onEnter() {} }))
-      assert.match(markup, /Meet Riri/)
+      const [landing, about] = markup.split('<dialog')
+      assert.equal((landing.match(/Resonance/g) ?? []).length, 1)
+      assert.doesNotMatch(landing, /Meet Riri|catalog|Before you enter|experiment|Choose a vibe/)
+      assert.match(landing, /classroom-poster\.jpg/)
+      assert.match(about, /Meet Riri/)
+      assert.match(about, /small experiment in music discovery/)
+      assert.match(about, /Claude/)
+      assert.match(about, /Last.fm/)
       assert.match(markup, /Enter the room/)
       if (mode === 'backend') {
-        assert.match(markup, /Connected recommendations/)
-        assert.match(markup, /Tell her what you like/)
-        assert.doesNotMatch(markup, /class="home__promise">[^<]*Choose a vibe/)
+        assert.match(about, /local recommendation server/)
+        assert.match(about, /Tell Riri what you like/)
+        assert.doesNotMatch(about, /This public demo uses/)
       } else {
-        assert.match(markup, /Built-in 36-song catalog/)
-        assert.match(markup, /Meet Riri\. Choose a vibe/)
+        assert.match(about, /built-in catalog of 36 songs/)
+        assert.match(about, /Choose a vibe/)
+        assert.match(about, /does not connect to Claude/)
       }
     } finally {
       await server.close()
     }
   })
 }
+
+test('preparation and rotation show entry guidance, while errors prioritize recovery', async () => {
+  const server = await createServer({ root, server: { middlewareMode: true }, appType: 'custom' })
+  try {
+    const { default: RoomLoading } = await server.ssrLoadModule('/src/components/RoomLoading.jsx')
+    for (const rotate of [false, true]) {
+      const markup = renderToStaticMarkup(createElement(RoomLoading, { rotate, onBack() {} }))
+      assert.match(markup, rotate ? /Turn your screen sideways/ : /Preparing the room…/)
+      assert.match(markup, /Before You Enter/)
+      assert.match(markup, /WASD or the arrow keys/)
+      assert.match(markup, /Hold Shift to run/)
+      assert.match(markup, /joystick; push to its outer edge to run/)
+      assert.match(markup, /Small touch screens need landscape/)
+      assert.match(markup, /camera follows Riri automatically/)
+      assert.match(markup, /Voice is off/)
+      assert.match(markup, /Back to home/)
+    }
+    const error = renderToStaticMarkup(createElement(RoomLoading, { failed: true, onBack() {} }))
+    assert.match(error, /role="alert"/)
+    assert.match(error, /Reload page/)
+    assert.match(error, /Back to home/)
+    assert.doesNotMatch(error, /Before You Enter/)
+  } finally {
+    await server.close()
+  }
+})

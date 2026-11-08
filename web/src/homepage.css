@@ -1,10 +1,8 @@
 .home {
   --home-space: clamp(1.25rem, 4.5vw, 4rem);
-  --home-title: clamp(2.75rem, 7vw, 7rem);
-  --home-body: clamp(1.125rem, 1.7vw, 1.375rem);
-  --home-door: #8a4d50;
-  --home-frame: #663743;
-  --home-sunlight: rgba(255, 170, 132, 0.2);
+  --home-title: clamp(2.75rem, 6.25vw, 6rem);
+  --home-title-gap: 2rem;
+  --home-shade: rgba(18, 12, 18, 0.88);
   --home-radius: 0.75rem;
   position: relative;
   height: 100dvh;
@@ -19,16 +17,28 @@
   z-index: 2;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 1rem;
   padding: max(1.5rem, env(safe-area-inset-top)) max(var(--home-space), env(safe-area-inset-right))
     1.5rem max(var(--home-space), env(safe-area-inset-left));
 }
 
-.home__brand {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 1.125rem;
-  font-weight: 700;
+/* The illustration is decorative; title and actions remain real page content. */
+.home__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.home::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--home-shade), transparent 65%);
 }
 
 .home__about {
@@ -42,18 +52,18 @@
 }
 
 .home__layout {
-  display: grid;
-  grid-template-columns: minmax(0, 46fr) minmax(0, 54fr);
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
   min-height: 100dvh;
 }
 
 .home__copy {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 8rem max(var(--home-space), env(safe-area-inset-right)) 5rem
+  width: 100%;
+  padding: 8rem max(var(--home-space), env(safe-area-inset-right))
+    max(var(--home-space), env(safe-area-inset-bottom))
     max(var(--home-space), env(safe-area-inset-left));
-  position: relative;
 }
 
 .home h1 {
@@ -64,84 +74,11 @@
   letter-spacing: -0.055em;
 }
 
-.home__intro {
-  max-width: 23rem;
-  margin: 1.75rem 0 2rem;
-  font-size: var(--home-body);
-  line-height: 1.5;
-}
-
 .home .home__enter {
+  margin-top: var(--home-title-gap);
   min-height: 3.5rem;
   padding: 0.9rem 1.5rem;
   font-size: 1.125rem;
-}
-
-.home__promise {
-  color: var(--riri-muted);
-  font-size: 1rem;
-  line-height: 1.5;
-  margin: 1.25rem 0;
-}
-
-.home__controls {
-  max-width: 26rem;
-  color: var(--riri-muted);
-  font-size: 0.875rem;
-  line-height: 1.6;
-}
-
-.home__controls summary {
-  cursor: pointer;
-  min-height: 2.75rem;
-  padding-block: 0.625rem;
-  width: fit-content;
-}
-
-.home__catalog {
-  position: absolute;
-  bottom: max(1rem, env(safe-area-inset-bottom));
-  font-size: 0.875rem;
-  color: var(--riri-muted);
-}
-
-.home__doorway {
-  position: relative;
-  min-height: 34rem;
-  overflow: hidden;
-  border-left: 1.25rem solid var(--home-frame);
-  background: var(--home-frame);
-  perspective: 50rem;
-}
-
-.home__room {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(var(--home-sunlight), var(--home-sunlight)),
-    url('/classroom-entry.png') center / cover;
-}
-
-.home__door {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 12%;
-  transform: rotateY(35deg);
-  transform-origin: left;
-  background: var(--home-door);
-  border: 0.5rem solid var(--home-frame);
-  box-shadow: 1rem 0 2rem rgba(18, 12, 18, 0.3);
-}
-
-.home__door::after {
-  content: '';
-  position: absolute;
-  top: 54%;
-  right: 12%;
-  width: 0.5rem;
-  height: 2rem;
-  background: var(--riri-blush);
-  border-radius: 0.25rem;
 }
 
 .home__dialog {
@@ -203,18 +140,14 @@
 }
 
 @media (max-width: 899px) {
-  .home__layout {
-    grid-template-columns: minmax(0, 1fr);
+  .home__art {
+    object-position: 65% center;
   }
-  .home__copy {
-    padding-block: 7rem 4rem;
-  }
-  .home__doorway {
-    min-height: clamp(16rem, 55vw, 30rem);
-    border-top: 0.75rem solid var(--home-frame);
+  .home::after {
+    background: linear-gradient(0deg, var(--riri-ink), var(--home-shade) 25%, transparent 75%);
   }
   .home h1 {
-    font-size: clamp(2.75rem, 11vw, 5.5rem);
+    font-size: clamp(2.75rem, 9vw, 5.5rem);
   }
 }
 
@@ -270,6 +203,33 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.75rem;
+}
+
+.room-loading__guide {
+  margin-block: 1.5rem;
+  padding: 1.25rem;
+  text-align: left;
+  background: var(--riri-surface-base);
+  border: 1px solid var(--riri-border);
+  border-radius: var(--home-radius);
+}
+
+.room-loading__guide h2 {
+  margin: 0 0 1rem;
+  font:
+    600 1.125rem/1.5 'Space Grotesk',
+    sans-serif;
+}
+
+.room-loading__guide ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--riri-muted);
+  line-height: 1.6;
+}
+
+.room-loading__guide li + li {
+  margin-top: 0.75rem;
 }
 
 .room-loading .button {

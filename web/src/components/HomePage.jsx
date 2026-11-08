@@ -18,8 +18,8 @@ export default function HomePage({ onEnter, returning = false }) {
 
   return (
     <main className="home">
+      <img className="home__art" src="/classroom-poster.jpg" alt="" fetchPriority="high" />
       <header className="home__header">
-        <span className="home__brand">Resonance Room</span>
         <button className="home__about" onClick={() => setAboutOpen(true)}>
           About
         </button>
@@ -32,7 +32,6 @@ export default function HomePage({ onEnter, returning = false }) {
               <br />
               Room
             </h1>
-            <p className="home__intro">A small experiment in music discovery.</p>
             <button
               className="button button--primary home__enter"
               onClick={onEnter}
@@ -40,32 +39,8 @@ export default function HomePage({ onEnter, returning = false }) {
             >
               Enter the room
             </button>
-            <p className="home__promise">
-              {config.usesBackend
-                ? 'Meet Riri. Tell her what you like. Find six songs.'
-                : 'Meet Riri. Choose a vibe. Find six songs.'}
-            </p>
-            <details className="home__controls">
-              <summary>Before you enter</summary>
-              <p>
-                Use WASD or the arrow keys to move Riri. Hold Shift to run. On touch screens, use
-                the movement joystick. Smaller screens need landscape.
-              </p>
-              <p>The camera follows Riri automatically. Voice is off until you enable it.</p>
-            </details>
           </div>
-          <p className="home__catalog">
-            {config.usesBackend ? 'Connected recommendations' : 'Built-in 36-song catalog'}
-          </p>
         </section>
-        <div
-          className="home__doorway"
-          role="img"
-          aria-label="An open doorway into Riri’s classroom"
-        >
-          <div className="home__room" />
-          <div className="home__door" />
-        </div>
       </div>
       <dialog
         ref={about}
@@ -79,18 +54,22 @@ export default function HomePage({ onEnter, returning = false }) {
           </button>
         </form>
         <h2 id="about-title">Meet Riri</h2>
-        <p>Riri is a 3D avatar that recommends music.</p>
         <p>
-          This public demo uses a built-in catalog of 36 songs. Choose a vibe, explore six
-          recommendations, and like your favorites.
+          Resonance Room is a small experiment in music discovery with Riri, a 3D avatar that
+          recommends music.
+        </p>
+        <p>
+          {config.usesBackend
+            ? 'This version connects to the local recommendation server. Tell Riri what you like, explore six recommendations, and like your favorites.'
+            : 'This public demo uses a built-in catalog of 36 songs. Choose a vibe, explore six recommendations, and like your favorites.'}
         </p>
         <p>
           In local mode, Riri can use Claude to interpret your request and Last.fm to find
           recommendations when the services are configured.
         </p>
         <p className="home__fine-print">
-          Likes stay in this browser session. The public demo does not stream music or connect to
-          Claude or Last.fm.
+          Likes stay in this browser session. Music is not streamed here.
+          {!config.usesBackend && ' The public demo does not connect to Claude or Last.fm.'}
         </p>
       </dialog>
     </main>
