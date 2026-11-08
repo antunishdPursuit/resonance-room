@@ -168,6 +168,8 @@
   --prep-row-gap: clamp(0.75rem, 1.3vw, 1.25rem);
   --prep-banner: clamp(12rem, 32dvh, 20rem);
   --prep-mobile-art-width: 180%;
+  --prep-actions-width: 22rem;
+  --prep-action-gap: 0.75rem;
   position: fixed;
   inset: 0;
   z-index: 101;
@@ -232,9 +234,18 @@
 
 .room-loading__actions {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1.5rem;
+  align-items: center;
+  width: min(var(--prep-actions-width), 100%);
+  gap: var(--prep-action-gap);
+}
+
+.room-loading__actions > button {
+  flex: 1;
+  min-width: 0;
+  min-height: 3.25rem;
+  padding-inline: 0.5rem;
+  font-size: 1rem;
+  white-space: nowrap;
 }
 
 .room-loading__guide {
@@ -263,9 +274,15 @@
 
 .room-loading .button {
   order: 0;
-  min-width: 10rem;
+  min-width: 0;
   min-height: 3.25rem;
-  font-size: 1.125rem;
+  font-size: 1rem;
+}
+
+@media (max-width: 600px), (max-height: 600px) {
+  .room-loading {
+    --prep-banner: 50dvh;
+  }
 }
 
 .room-loading[data-fading='true'] {
@@ -273,7 +290,7 @@
   pointer-events: none;
 }
 
-@media (max-width: 899px) {
+@media (max-width: 899px), (max-height: 600px) {
   .room-loading {
     display: block;
     padding: 0;
