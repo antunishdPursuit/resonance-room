@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 
 const WOOD_NODES = new Set([18, 21, 23, 31, 50])
+const FURNITURE_NODES = new Set([18])
 const SHADOW_NODES = new Set([18, 19, 21, 23, 31, 33, 34, 50])
 
 export function createClassroomLighting({ scene, renderer }) {
@@ -34,25 +35,42 @@ export function createClassroomLighting({ scene, renderer }) {
 }
 
 function addSurfaceVariation(material, kind) {
-  material.roughness = kind === 'wood' ? 0.7 : 0.9
+  material.roughness =
+    kind === 'furniture' ? 0.55 : kind === 'metal' ? 0.42 : kind === 'wood' ? 0.7 : 0.9
+  if (kind === 'metal') material.metalness = 0.55
   material.onBeforeCompile = (shader) => {
-    const varying = 'varying vec3 vRoomPosition; varying float vRoomUp;\n'
+    const varying = 'varying vec3 vRoomPosition; varying vec3 vRoomNormal; varying float vRoomUp;\n'
     shader.vertexShader =
       varying +
       shader.vertexShader.replace(
         '#include <project_vertex>',
         `vRoomPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;
-       vRoomUp = abs(normalize(mat3(modelMatrix) * objectNormal).y);
+       vRoomNormal = normalize(mat3(modelMatrix) * objectNormal);
+       vRoomUp = abs(vRoomNormal.y);
        #include <project_vertex>`,
       )
     const variation =
-      kind === 'wood'
-        ? `float grain = sin(vRoomPosition.x * 95.0 + sin(vRoomPosition.z * 9.0) * 2.0);
+      kind === 'metal'
+        ? `diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.055, 0.050, 0.065), 0.28);`
+        : kind === 'wood' || kind === 'furniture'
+          ? `float grain = sin(vRoomPosition.x * 95.0 + sin(vRoomPosition.z * 9.0) * 2.0);
          grain *= 1.0 - smoothstep(0.1, 0.8, fwidth(vRoomPosition.x * 95.0));
          float wood = step(diffuseColor.g * 1.1, diffuseColor.r) * step(diffuseColor.b * 1.5, diffuseColor.g);
          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.32, 0.17, 0.075), wood * 0.42);
-         diffuseColor.rgb *= 0.98 + grain * 0.07;`
-        : `if (vRoomUp > 0.9 && abs(vRoomPosition.y) < 0.025) {
+         diffuseColor.rgb *= 0.98 + grain * 0.07;
+         ${
+           kind === 'furniture'
+             ? `
+           float fineGrain = sin(vRoomPosition.x * 210.0 + sin(vRoomPosition.z * 12.0) * 3.0);
+           fineGrain *= 1.0 - smoothstep(0.1, 0.8, fwidth(vRoomPosition.x * 210.0));
+           float bevel = 4.0 * vRoomUp * (1.0 - vRoomUp);
+           float wear = bevel * (0.5 + 0.5 * sin(vRoomPosition.x * 17.0 + vRoomPosition.z * 13.0));
+           diffuseColor.rgb *= 1.0 + wood * fineGrain * 0.018;
+           diffuseColor.rgb += wood * wear * vec3(0.025, 0.018, 0.011);
+         `
+             : ''
+         }`
+          : `if (vRoomUp > 0.9 && abs(vRoomPosition.y) < 0.025) {
            vec2 p = vRoomPosition.xz;
            float row = floor(p.x / 0.22);
            vec2 plank = fract(vec2(p.x / 0.22, p.y / 1.4 + mod(row, 2.0) * 0.5));
@@ -77,7 +95,7 @@ function addSurfaceVariation(material, kind) {
         `#include <color_fragment>\n${variation}`,
       )
   }
-  material.customProgramCacheKey = () => `classroom-surface-${kind}-1`
+  material.customProgramCacheKey = () => `classroom-surface-${kind}-2`
 }
 
 export function applyClassroomAppearance(classroomMeshes) {
@@ -96,7 +114,15 @@ export function applyClassroomAppearance(classroomMeshes) {
     originals.push(state)
     mesh.castShadow = SHADOW_NODES.has(node)
     mesh.receiveShadow = true
-    const kind = WOOD_NODES.has(node) ? 'wood' : node === 52 ? 'room' : null
+    const kind = FURNITURE_NODES.has(node)
+      ? 'furniture'
+      : node === 19
+        ? 'metal'
+        : WOOD_NODES.has(node)
+          ? 'wood'
+          : node === 52
+            ? 'room'
+            : null
     if (kind && !Array.isArray(mesh.material)) {
       const key = `${mesh.material.uuid}-${kind}`
       if (!materials.has(key)) {

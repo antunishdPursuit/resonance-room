@@ -17,13 +17,15 @@ test('surface treatment preserves atlas ownership, shared materials and restores
     return value
   }
   const wood = mesh(18)
+  const furnitureRepeat = mesh(18)
   const podium = mesh(31)
   const wall = mesh(52)
   const curtain = mesh(45)
   const avatarLikeMesh = new THREE.Mesh(new THREE.BoxGeometry(), original)
   const position = curtain.position.clone()
-  const appearance = applyClassroomAppearance([wood, podium, wall, curtain])
-  assert.equal(wood.material, podium.material)
+  const appearance = applyClassroomAppearance([wood, furnitureRepeat, podium, wall, curtain])
+  assert.equal(wood.material, furnitureRepeat.material)
+  assert.notEqual(wood.material, podium.material)
   assert.notEqual(wood.material, wall.material)
   assert.equal(wood.material.map, atlas)
   assert.equal(avatarLikeMesh.material, original)
@@ -45,6 +47,29 @@ test('surface treatment preserves atlas ownership, shared materials and restores
   assert.deepEqual(curtain.position, position)
   assert.equal(curtain.scale.z, 1)
   assert.equal(wood.castShadow, false)
+})
+
+test('furniture polish preserves mesh bounds and atlas while separating steel from wood', () => {
+  const atlas = new THREE.Texture()
+  const original = new THREE.MeshStandardMaterial({ map: atlas })
+  const meshes = [18, 19].map((nodeIndex) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), original)
+    mesh.userData.classroomSource = { nodeIndex }
+    return mesh
+  })
+  const geometries = meshes.map((mesh) => mesh.geometry)
+  const bounds = meshes.map((mesh) => new THREE.Box3().setFromObject(mesh))
+  const appearance = applyClassroomAppearance(meshes)
+  assert.equal(meshes[0].material.roughness, 0.55)
+  assert.equal(meshes[1].material.roughness, 0.42)
+  assert.equal(meshes[1].material.metalness, 0.55)
+  meshes.forEach((mesh, i) => {
+    assert.equal(mesh.geometry, geometries[i])
+    assert.equal(mesh.material.map, atlas)
+    assert.deepEqual(new THREE.Box3().setFromObject(mesh), bounds[i])
+  })
+  appearance.dispose()
+  meshes.forEach((mesh) => assert.equal(mesh.material, original))
 })
 
 test('lighting has one bounded shadow source and releases its scene and renderer state', () => {
