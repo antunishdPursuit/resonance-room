@@ -85,6 +85,32 @@ test('preparation and rotation show entry guidance, while errors prioritize reco
     assert.match(error, /Reload page/)
     assert.match(error, /Back to home/)
     assert.doesNotMatch(error, /Before You Enter/)
+    assert.doesNotMatch(error, />Continue</)
+  } finally {
+    await server.close()
+  }
+})
+
+test('Continue is enabled only when ready, correctly oriented and not fading', async () => {
+  const server = await createServer({ root, server: { middlewareMode: true }, appType: 'custom' })
+  try {
+    const { default: RoomLoading } = await server.ssrLoadModule('/src/components/RoomLoading.jsx')
+    const render = (props) =>
+      renderToStaticMarkup(createElement(RoomLoading, { onBack() {}, onContinue() {}, ...props }))
+    for (const props of [
+      {},
+      { ready: true, rotate: true },
+      { ready: true, fading: true },
+      { ready: true, onContinue: undefined },
+    ]) {
+      assert.match(render(props), /<button[^>]*disabled=""[^>]*>Continue<\/button>/)
+    }
+    const ready = render({ ready: true })
+    assert.match(ready, /The room is ready/)
+    assert.match(ready, /Read the controls, then select Continue/)
+    assert.doesNotMatch(ready, /loading-screen__ring/)
+    assert.match(ready, /<button class="button button--primary">Continue<\/button>/)
+    assert.match(ready, /Before You Enter/)
   } finally {
     await server.close()
   }

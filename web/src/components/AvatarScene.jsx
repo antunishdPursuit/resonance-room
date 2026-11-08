@@ -72,7 +72,6 @@ import {
 import { MobileTouchControls } from './MobileExperience.jsx'
 import {
   classifyPhoneViewport,
-  getEntryState,
   shouldShowMobileControls,
   supportsTouchControls,
 } from '../ui/mobileControls.js'
@@ -328,17 +327,6 @@ export default function AvatarScene({ onBackHome }) {
       setEntryStarted(true)
     }
   }
-
-  const enterWhenReady = useEffectEvent(handleReady)
-  const entryState = getEntryState({
-    requiresLandscape: isPhoneExperience,
-    isLandscape: isPhoneLandscape,
-    assetsReady: experienceAssetsReady,
-    entryStarted,
-  })
-  useEffect(() => {
-    if (entryState === 'ready') enterWhenReady()
-  }, [entryState])
 
   useEffect(
     () => () => {
@@ -1082,6 +1070,8 @@ export default function AvatarScene({ onBackHome }) {
       {/* Loading screen */}
       {loaderVisible && (
         <ExperienceEntryScreen
+          ready={experienceAssetsReady}
+          onContinue={handleReady}
           fading={loaderFading}
           isPhone={isPhoneExperience}
           isLandscape={isPhoneLandscape}

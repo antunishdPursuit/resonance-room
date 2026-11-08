@@ -1,31 +1,54 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
-export default function RoomLoading({ failed = false, rotate = false, fading = false, onBack }) {
+export default function RoomLoading({
+  failed = false,
+  rotate = false,
+  fading = false,
+  ready = false,
+  onContinue,
+  onBack,
+}) {
   const [slow, setSlow] = useState(false)
+  const screen = useRef(null)
   useEffect(() => {
+    screen.current?.focus()
     const timer = setTimeout(() => setSlow(true), 45000)
     return () => clearTimeout(timer)
   }, [])
 
   return (
-    <section className="room-loading" data-fading={fading} aria-labelledby="room-loading-title">
+    <section
+      ref={screen}
+      tabIndex={-1}
+      className="room-loading"
+      data-fading={fading}
+      aria-labelledby="room-loading-title"
+      onKeyDown={(event) => event.stopPropagation()}
+      onKeyUp={(event) => event.stopPropagation()}
+    >
       <div className="room-loading__content">
-        {!failed && !rotate && <span className="loading-screen__ring" aria-hidden="true" />}
+        {!failed && !rotate && !ready && (
+          <span className="loading-screen__ring" aria-hidden="true" />
+        )}
         <h1 id="room-loading-title">
           {failed
             ? 'The room couldn’t load'
             : rotate
               ? 'Turn your screen sideways'
-              : 'Preparing the room…'}
+              : ready
+                ? 'The room is ready'
+                : 'Preparing the room…'}
         </h1>
         <p role={failed ? 'alert' : 'status'}>
           {failed
             ? 'Check your connection, then reload the page to try again.'
             : rotate
               ? 'The room needs more width. Rotate your screen to continue, or return to the homepage.'
-              : slow
-                ? 'This is taking a while. You can return home and try again.'
-                : 'Loading Riri and the classroom.'}
+              : ready
+                ? 'Read the controls, then select Continue when you’re ready.'
+                : slow
+                  ? 'This is taking a while. You can return home and try again.'
+                  : 'Loading Riri and the classroom.'}
         </p>
         {!failed && (
           <section className="room-loading__guide" aria-labelledby="entry-guide-title">
@@ -43,6 +66,15 @@ export default function RoomLoading({ failed = false, rotate = false, fading = f
           </section>
         )}
         <div className="room-loading__actions">
+          {!failed && (
+            <button
+              className="button button--primary"
+              onClick={onContinue}
+              disabled={!ready || rotate || fading || !onContinue}
+            >
+              Continue
+            </button>
+          )}
           {failed && (
             <button className="button button--primary" onClick={() => window.location.reload()}>
               Reload page

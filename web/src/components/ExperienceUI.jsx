@@ -9,9 +9,24 @@ function PhoneRotationGraphic() {
   )
 }
 
-export function ExperienceEntryScreen({ fading, isPhone, isLandscape, failed, onBack }) {
+export function ExperienceEntryScreen({
+  fading,
+  isPhone,
+  isLandscape,
+  failed,
+  ready,
+  onContinue,
+  onBack,
+}) {
   return (
-    <RoomLoading fading={fading} rotate={isPhone && !isLandscape} failed={failed} onBack={onBack} />
+    <RoomLoading
+      fading={fading}
+      rotate={isPhone && !isLandscape}
+      failed={failed}
+      ready={ready}
+      onContinue={onContinue}
+      onBack={onBack}
+    />
   )
 }
 
