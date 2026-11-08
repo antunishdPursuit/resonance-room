@@ -1,11 +1,14 @@
 import * as THREE from 'three'
 import { createTeacherDetails } from './classroomTeacherDetails.js'
+import { createWallDetails } from './classroomWallDetails.js'
 
 export function createClassroomDetails(classroomMeshes) {
   const object3d = new THREE.Group()
   object3d.name = 'Classroom shelf and window details'
   const teacherDetails = createTeacherDetails(classroomMeshes)
   object3d.add(teacherDetails.object3d)
+  const wallDetails = createWallDetails(classroomMeshes)
+  object3d.add(wallDetails.object3d)
   const geometries = new Set()
   const materials = new Set()
   const geometry = (value) => {
@@ -149,6 +152,7 @@ export function createClassroomDetails(classroomMeshes) {
     object3d,
     dispose() {
       teacherDetails.dispose()
+      wallDetails.dispose()
       object3d.removeFromParent()
       object3d.traverse((object) => {
         if (object.isInstancedMesh) object.dispose()
