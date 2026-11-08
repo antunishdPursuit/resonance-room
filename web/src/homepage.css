@@ -115,6 +115,10 @@
   font-size: 0.875rem;
 }
 
+.riri-app[data-phone='true'] .riri-response {
+  width: min(320px, 40dvw);
+}
+
 .home__dialog p {
   margin-top: 1rem;
 }

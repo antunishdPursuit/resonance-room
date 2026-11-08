@@ -10,13 +10,14 @@ export function createClassroomLighting({ scene, renderer }) {
   }
   const lights = new THREE.Group()
   lights.name = 'Classroom afternoon lighting'
-  lights.add(new THREE.HemisphereLight(0xffe8d5, 0x685568, 1.25))
-  const sun = new THREE.DirectionalLight(0xffd2ad, 2.2)
-  sun.position.set(8, 7, -2)
+  lights.add(new THREE.HemisphereLight(0xfff3e8, 0x68637d, 1.6))
+  const sun = new THREE.DirectionalLight(0xffdfc2, 1.6)
+  sun.position.set(8, 7, 3)
   sun.target.position.set(0, 0, 0)
   sun.castShadow = true
   sun.shadow.mapSize.set(1024, 1024)
   Object.assign(sun.shadow.camera, { left: -7, right: 7, top: 7, bottom: -7, near: 0.5, far: 25 })
+  sun.shadow.camera.updateProjectionMatrix()
   sun.shadow.normalBias = 0.025
   sun.shadow.bias = -0.0001
   lights.add(sun, sun.target)
@@ -46,9 +47,11 @@ function addSurfaceVariation(material, kind) {
       )
     const variation =
       kind === 'wood'
-        ? `float grain = sin(vRoomPosition.x * 210.0 + sin(vRoomPosition.z * 18.0) * 2.0);
-         grain *= 1.0 - smoothstep(0.1, 0.8, fwidth(vRoomPosition.x * 210.0));
-         diffuseColor.rgb *= 0.98 + grain * 0.02;`
+        ? `float grain = sin(vRoomPosition.x * 95.0 + sin(vRoomPosition.z * 9.0) * 2.0);
+         grain *= 1.0 - smoothstep(0.1, 0.8, fwidth(vRoomPosition.x * 95.0));
+         float wood = step(diffuseColor.g * 1.1, diffuseColor.r) * step(diffuseColor.b * 1.5, diffuseColor.g);
+         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.32, 0.17, 0.075), wood * 0.42);
+         diffuseColor.rgb *= 0.98 + grain * 0.07;`
         : `if (vRoomUp > 0.9 && abs(vRoomPosition.y) < 0.025) {
            vec2 p = vRoomPosition.xz;
            float row = floor(p.x / 0.22);
@@ -59,7 +62,7 @@ function addSurfaceVariation(material, kind) {
            diffuseColor.rgb = vec3(0.24, 0.13, 0.075) * mix(0.78, 1.04 + grain * 0.025, edge);
            float reach = max(4.3 - vRoomPosition.x, 0.0);
            float height = vRoomPosition.y + reach * 0.875;
-           float along = vRoomPosition.z - reach * 0.25;
+           float along = vRoomPosition.z + reach * 0.375;
            float aperture = smoothstep(1.13, 1.2, height) * (1.0 - smoothstep(2.85, 2.95, height));
            float opening = smoothstep(-3.7, -3.6, along) * (1.0 - smoothstep(-1.5, -1.4, along));
            opening += smoothstep(1.5, 1.6, along) * (1.0 - smoothstep(3.5, 3.6, along));
@@ -121,6 +124,27 @@ export function applyClassroomAppearance(classroomMeshes) {
         state.mesh.scale.copy(state.scale)
       }
       materials.forEach((material) => material.dispose())
+    },
+  }
+}
+
+export function applyClassroomAtmosphere(campus) {
+  const sky = campus.object3d.getObjectByName('Blush sunrise sky')
+  if (!sky) return { dispose() {} }
+  const original = sky.material
+  const material = original.clone()
+  material.uniforms.topColor.value.set(0xc7bfd1)
+  material.uniforms.horizonColor.value.set(0xffdbb2)
+  material.uniforms.lowColor.value.set(0xf2d6b5)
+  material.fragmentShader = material.fragmentShader.replace(
+    'gl_FragColor = vec4(color, 1.0);',
+    'gl_FragColor = vec4(color, 1.0);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>',
+  )
+  sky.material = material
+  return {
+    dispose() {
+      sky.material = original
+      material.dispose()
     },
   }
 }

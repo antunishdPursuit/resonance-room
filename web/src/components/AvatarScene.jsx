@@ -39,6 +39,7 @@ import { createClassroomCampusEnvironment } from '../classroom/classroomCampusEn
 import { createClassroomDetails } from '../classroom/classroomDetails.js'
 import {
   applyClassroomAppearance,
+  applyClassroomAtmosphere,
   createClassroomLighting,
 } from '../classroom/classroomAppearance.js'
 import {
@@ -177,6 +178,10 @@ export default function AvatarScene({ onBackHome }) {
   const voiceEnabledRef = useRef(false)
   const useElevenlabsRef = useRef(false)
   const isPhoneExperience = phoneViewport.isPhone
+  const phoneViewportRef = useRef(phoneViewport)
+  useEffect(() => {
+    phoneViewportRef.current = phoneViewport
+  }, [phoneViewport])
   const isPhoneLandscape = phoneViewport.isLandscape
   const experienceAssetsReady =
     !roomLoadFailed && classroomReady && openingGreetingReady && movementReady
@@ -350,6 +355,7 @@ export default function AvatarScene({ onBackHome }) {
     let campusEnvironment = null
     let classroomAppearance = null
     let classroomDetails = null
+    let classroomAtmosphere = null
     let cameraBlockers = null
     let sceneOcclusionMeshes = null
     let movementController = null
@@ -414,7 +420,12 @@ export default function AvatarScene({ onBackHome }) {
     const scene = new THREE.Scene()
 
     // Camera
-    const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 60)
+    const camera = new THREE.PerspectiveCamera(
+      phoneViewportRef.current.isPhone ? 30 : 35,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      60,
+    )
     positionOpeningCamera(camera)
 
     if (CLASSROOM_INSPECTION_ENABLED) {
@@ -454,6 +465,7 @@ export default function AvatarScene({ onBackHome }) {
           roomBounds: movementEnvironment.walkableBounds,
         })
         scene.add(campusEnvironment.object3d)
+        classroomAtmosphere = applyClassroomAtmosphere(campusEnvironment)
         const importedRoomShells = movementEnvironment.classroomMeshes.filter(
           (mesh) => mesh.userData.classroomSource?.nodeIndex === 52,
         )
@@ -757,6 +769,7 @@ export default function AvatarScene({ onBackHome }) {
         viewportHeight: window.innerHeight,
         bubbleWidth: bubble.offsetWidth || 320,
         bubbleHeight: bubble.offsetHeight || 96,
+        avoidAnchorOverlap: phoneViewportRef.current.isPhone,
       })
 
       bubble.style.setProperty('--speech-bubble-x', `${position.left}px`)
@@ -809,6 +822,7 @@ export default function AvatarScene({ onBackHome }) {
 
     function onResize() {
       camera.aspect = window.innerWidth / window.innerHeight
+      camera.fov = readPhoneViewport().isPhone ? 30 : 35
       camera.updateProjectionMatrix()
       renderer.setSize(window.innerWidth, window.innerHeight)
     }
@@ -839,6 +853,7 @@ export default function AvatarScene({ onBackHome }) {
       boardInteractionActionRef.current = null
       delete window.__RIRI_MOVEMENT__
       collisionDebugView?.dispose()
+      classroomAtmosphere?.dispose()
       if (campusEnvironment) scene.remove(campusEnvironment.object3d)
       campusEnvironment?.dispose()
       campusEnvironment = null

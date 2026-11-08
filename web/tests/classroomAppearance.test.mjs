@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { createClassroomOcclusionController } from '../src/classroom/classroomOcclusionController.js'
 import {
   applyClassroomAppearance,
+  applyClassroomAtmosphere,
   createClassroomLighting,
 } from '../src/classroom/classroomAppearance.js'
 
@@ -54,6 +55,10 @@ test('lighting has one bounded shadow source and releases its scene and renderer
   const sun = group.children.find((object) => object.isDirectionalLight)
   assert.equal(group.children.filter((object) => object.castShadow).length, 1)
   assert.equal(sun.shadow.mapSize.x, 1024)
+  assert.deepEqual(
+    sun.shadow.camera.projectionMatrix.toArray(),
+    new THREE.OrthographicCamera(-7, 7, 7, -7, 0.5, 25).projectionMatrix.toArray(),
+  )
   assert.ok(sun.position.x > sun.target.position.x)
   assert.equal(renderer.shadowMap.enabled, true)
   lighting.dispose()
@@ -95,4 +100,30 @@ test('surface treatment survives camera occlusion fade, restore and cleanup', ()
   assert.equal(blocker.material, treated)
   appearance.dispose()
   assert.equal(blocker.material, original)
+})
+
+test('sky treatment owns its clone, applies display conversion and restores the source', () => {
+  const original = new THREE.ShaderMaterial({
+    uniforms: Object.fromEntries(
+      ['topColor', 'horizonColor', 'lowColor'].map((name) => [
+        name,
+        { value: new THREE.Color(0xffb4cf) },
+      ]),
+    ),
+    fragmentShader: 'void main() { gl_FragColor = vec4(color, 1.0); }',
+  })
+  const scene = new THREE.Group()
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(), original)
+  sky.name = 'Blush sunrise sky'
+  scene.add(sky)
+  const atmosphere = applyClassroomAtmosphere({ object3d: scene })
+  assert.notEqual(sky.material, original)
+  assert.match(sky.material.fragmentShader, /colorspace_fragment/)
+  assert.equal(original.uniforms.horizonColor.value.getHex(), 0xffb4cf)
+  assert.equal(sky.material.uniforms.horizonColor.value.getHex(), 0xffdbb2)
+  let disposed = 0
+  sky.material.addEventListener('dispose', () => disposed++)
+  atmosphere.dispose()
+  assert.equal(sky.material, original)
+  assert.equal(disposed, 1)
 })

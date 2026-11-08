@@ -13,6 +13,26 @@ const BASE_INPUT = {
   bubbleHeight: 100,
 }
 
+test('short phone viewports place an overlapping bubble beside the avatar', () => {
+  for (const normalizedX of [-0.3, 0.3]) {
+    const input = {
+      ...BASE_INPUT,
+      viewportWidth: 844,
+      viewportHeight: 390,
+      bubbleWidth: 320,
+      bubbleHeight: 70,
+      normalizedX,
+      normalizedY: 0.9,
+      avoidAnchorOverlap: true,
+    }
+    const result = calculateSpeechBubblePosition(input)
+    const anchorX = ((normalizedX + 1) / 2) * input.viewportWidth
+    assert.equal(result.visible, true)
+    assert.ok(result.left + input.bubbleWidth < anchorX || result.left > anchorX)
+    assert.ok(result.left >= 16 && result.left + input.bubbleWidth <= input.viewportWidth - 16)
+  }
+})
+
 test('positions and clamps a visible bubble around Riri', () => {
   const position = calculateSpeechBubblePosition(BASE_INPUT)
 
