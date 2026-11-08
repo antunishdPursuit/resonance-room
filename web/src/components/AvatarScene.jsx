@@ -37,6 +37,10 @@ import {
 } from '../classroom/classroomMovementEnvironment.js'
 import { createClassroomCampusEnvironment } from '../classroom/classroomCampusEnvironment.js'
 import {
+  applyClassroomAppearance,
+  createClassroomLighting,
+} from '../classroom/classroomAppearance.js'
+import {
   CAMERA_MODES,
   createAvatarMovementController,
 } from '../classroom/avatarMovementController.js'
@@ -343,6 +347,7 @@ export default function AvatarScene({ onBackHome }) {
     let classroomInspectionCamera = null
     let movementEnvironment = null
     let campusEnvironment = null
+    let classroomAppearance = null
     let cameraBlockers = null
     let sceneOcclusionMeshes = null
     let movementController = null
@@ -415,13 +420,7 @@ export default function AvatarScene({ onBackHome }) {
     }
 
     // Lights
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6))
-    const keyLight = new THREE.DirectionalLight(0xffffff, 1.2)
-    keyLight.position.set(1, 2, -2)
-    scene.add(keyLight)
-    const fillLight = new THREE.DirectionalLight(0x8888ff, 0.3)
-    fillLight.position.set(-2, 1, -1)
-    scene.add(fillLight)
+    const classroomLighting = createClassroomLighting({ scene, renderer })
 
     // Shared loader
     const loader = new GLTFLoader()
@@ -446,6 +445,7 @@ export default function AvatarScene({ onBackHome }) {
           classroomRoot: gltf.scene,
           parser: gltf.parser,
         })
+        classroomAppearance = applyClassroomAppearance(movementEnvironment.classroomMeshes)
         campusEnvironment = createClassroomCampusEnvironment({
           roomBounds: movementEnvironment.walkableBounds,
         })
@@ -552,6 +552,12 @@ export default function AvatarScene({ onBackHome }) {
         disableUnwantedSpringBones(vrm)
         VRMUtils.combineSkeletons(vrm.scene)
         positionOpeningAvatar(vrm.scene)
+        vrm.scene.traverse((object) => {
+          if (object.isMesh) {
+            object.castShadow = true
+            object.receiveShadow = true
+          }
+        })
         scene.add(vrm.scene)
         vrmRef.current = vrm
         applyRestPose(vrm)
@@ -838,6 +844,8 @@ export default function AvatarScene({ onBackHome }) {
         recommendationBoard.dispose()
       }
       recommendationBoardRef.current = null
+      classroomAppearance?.dispose()
+      classroomLighting.dispose()
       VRMUtils.deepDispose(scene)
       vrmRef.current = null
       renderer.dispose()

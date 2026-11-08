@@ -37,13 +37,17 @@ export function createClassroomOcclusionController({
     if (existingState) return existingState
 
     const originalMaterial = mesh.material
-    const clonedMaterials = asMaterialArray(originalMaterial).map(
-      material => material.clone(),
-    )
+    const clonedMaterials = asMaterialArray(originalMaterial).map((material) => {
+      const clone = material.clone()
+      // Three.js does not copy shader callbacks during Material.clone().
+      clone.onBeforeCompile = material.onBeforeCompile
+      clone.customProgramCacheKey = material.customProgramCacheKey
+      return clone
+    })
     const state = {
       originalMaterial,
       clonedMaterials,
-      properties: clonedMaterials.map(material => ({
+      properties: clonedMaterials.map((material) => ({
         opacity: material.opacity,
         transparent: material.transparent,
         depthWrite: material.depthWrite,
@@ -70,9 +74,7 @@ export function createClassroomOcclusionController({
     raycaster.far = targetDistance - TARGET_CLEARANCE
 
     return new Set(
-      raycaster
-        .intersectObjects(classroomMeshes, false)
-        .map(intersection => intersection.object),
+      raycaster.intersectObjects(classroomMeshes, false).map((intersection) => intersection.object),
     )
   }
 
@@ -95,20 +97,13 @@ export function createClassroomOcclusionController({
         }
       }
 
-      material.opacity = THREE.MathUtils.lerp(
-        material.opacity,
-        targetOpacity,
-        amount,
-      )
+      material.opacity = THREE.MathUtils.lerp(material.opacity, targetOpacity, amount)
 
-      if (
-        !shouldFade
-        && Math.abs(material.opacity - original.opacity) <= OPACITY_EPSILON
-      ) {
+      if (!shouldFade && Math.abs(material.opacity - original.opacity) <= OPACITY_EPSILON) {
         material.opacity = original.opacity
         if (
-          material.transparent !== original.transparent
-          || material.depthWrite !== original.depthWrite
+          material.transparent !== original.transparent ||
+          material.depthWrite !== original.depthWrite
         ) {
           material.transparent = original.transparent
           material.depthWrite = original.depthWrite
@@ -133,8 +128,7 @@ export function createClassroomOcclusionController({
 
         updateMaterial(
           state,
-          occludingMeshes.has(mesh)
-            || state.secondsSinceOccluded < RELEASE_DELAY_SECONDS,
+          occludingMeshes.has(mesh) || state.secondsSinceOccluded < RELEASE_DELAY_SECONDS,
           delta,
         )
       })
@@ -145,7 +139,7 @@ export function createClassroomOcclusionController({
     dispose() {
       materialStates.forEach((state, mesh) => {
         mesh.material = state.originalMaterial
-        state.clonedMaterials.forEach(material => material.dispose())
+        state.clonedMaterials.forEach((material) => material.dispose())
       })
       materialStates.clear()
     },
