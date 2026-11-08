@@ -61,7 +61,9 @@ export default function RoomLoading({
                 Small touch screens need landscape. Larger tablets can use either orientation.
               </li>
               <li>
-                The camera follows Riri automatically. Voice is off until you enable it in Controls.
+                Free camera is on: drag to look around, or drag the right side on touch. Choose
+                Follow in Controls for automatic camera turning. Voice is off until you enable it in
+                Controls.
               </li>
             </ul>
           </section>

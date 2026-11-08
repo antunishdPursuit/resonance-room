@@ -76,7 +76,8 @@ test('preparation and rotation show entry guidance, while errors prioritize reco
       assert.match(markup, /Hold Shift to run/)
       assert.match(markup, /joystick; push to its outer edge to run/)
       assert.match(markup, /Small touch screens need landscape/)
-      assert.match(markup, /camera follows Riri automatically/)
+      assert.match(markup, /Free camera is on/)
+      assert.match(markup, /Choose Follow/)
       assert.match(markup, /Voice is off/)
       assert.match(markup, /Back to home/)
     }

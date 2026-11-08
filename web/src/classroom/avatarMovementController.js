@@ -35,23 +35,20 @@ export const CAMERA_MODES = Object.freeze({
   FREE: 'free',
 })
 
+export const DEFAULT_CAMERA_MODE = CAMERA_MODES.FREE
+
 export function normalizeCameraMode(value) {
-  return value === CAMERA_MODES.FREE
-    ? CAMERA_MODES.FREE
-    : CAMERA_MODES.FOLLOW
+  return value === CAMERA_MODES.FOLLOW ? CAMERA_MODES.FOLLOW : DEFAULT_CAMERA_MODE
 }
 
 export function dampCameraYaw(currentYaw, targetYaw, amount) {
   const normalizedAmount = THREE.MathUtils.clamp(amount, 0, 1)
   const shortestTurn = shortestYawDelta(currentYaw, targetYaw)
-  return currentYaw + (shortestTurn * normalizedAmount)
+  return currentYaw + shortestTurn * normalizedAmount
 }
 
 export function shortestYawDelta(currentYaw, targetYaw) {
-  return Math.atan2(
-    Math.sin(targetYaw - currentYaw),
-    Math.cos(targetYaw - currentYaw),
-  )
+  return Math.atan2(Math.sin(targetYaw - currentYaw), Math.cos(targetYaw - currentYaw))
 }
 
 export function updateFollowCameraYaw({
@@ -78,9 +75,9 @@ export function updateFollowCameraYaw({
   const nextIdleDuration = Math.max(idleDuration, 0) + safeDelta
   let nextRecentering = recentering
   if (
-    !nextRecentering
-    && nextIdleDuration >= Math.max(delay, 0)
-    && Math.abs(shortestYawDelta(cameraYaw, targetYaw)) > Math.max(deadZone, 0)
+    !nextRecentering &&
+    nextIdleDuration >= Math.max(delay, 0) &&
+    Math.abs(shortestYawDelta(cameraYaw, targetYaw)) > Math.max(deadZone, 0)
   ) {
     nextRecentering = true
   }
@@ -98,10 +95,7 @@ export function updateFollowCameraYaw({
     targetYaw,
     1 - Math.exp(-Math.max(followSpeed, 0) * safeDelta),
   )
-  if (
-    Math.abs(shortestYawDelta(nextCameraYaw, targetYaw))
-    <= Math.max(finishThreshold, 0)
-  ) {
+  if (Math.abs(shortestYawDelta(nextCameraYaw, targetYaw)) <= Math.max(finishThreshold, 0)) {
     nextCameraYaw = targetYaw
     nextRecentering = false
   }
@@ -113,21 +107,12 @@ export function updateFollowCameraYaw({
   }
 }
 
-export function resolveFollowHeading({
-  currentHeading,
-  avatarYaw,
-  movedX,
-  movedZ,
-}) {
+export function resolveFollowHeading({ currentHeading, avatarYaw, movedX, movedZ }) {
   const actualMovement = Math.hypot(movedX, movedZ)
   return actualMovement > 0.00001 ? avatarYaw : currentHeading
 }
 
-export function resolveMovementInput({
-  pressedKeys = [],
-  touchSideways = 0,
-  touchForward = 0,
-}) {
+export function resolveMovementInput({ pressedKeys = [], touchSideways = 0, touchForward = 0 }) {
   let sideways = Number.isFinite(touchSideways) ? touchSideways : 0
   let forward = Number.isFinite(touchForward) ? touchForward : 0
 
@@ -149,7 +134,7 @@ export function resolveMovementInput({
 }
 
 export function shouldStartCameraOrbit({
-  cameraMode = CAMERA_MODES.FOLLOW,
+  cameraMode = DEFAULT_CAMERA_MODE,
   button,
   pointerType,
   clientX,
@@ -163,7 +148,7 @@ export function shouldStartCameraOrbit({
     return false
   }
 
-  return clientX >= canvasLeft + (canvasWidth / 2)
+  return clientX >= canvasLeft + canvasWidth / 2
 }
 
 export function shouldRunMovement({
@@ -173,9 +158,7 @@ export function shouldRunMovement({
   touchForward = 0,
 }) {
   const hasTouchMovement = Math.hypot(touchSideways, touchForward) > 0
-  return Boolean(
-    keyboardRunActive || (touchRunActive && hasTouchMovement),
-  )
+  return Boolean(keyboardRunActive || (touchRunActive && hasTouchMovement))
 }
 
 export function resolveCameraPosition({
@@ -209,11 +192,11 @@ export function resolveCameraPosition({
 }
 
 function isFormControl(element) {
-  return element instanceof HTMLElement
-    && (
-      element.isContentEditable
-      || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(element.tagName)
-    )
+  return (
+    element instanceof HTMLElement &&
+    (element.isContentEditable ||
+      ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(element.tagName))
+  )
 }
 
 function circleIntersectsBounds(x, z, radius, bounds) {
@@ -222,19 +205,23 @@ function circleIntersectsBounds(x, z, radius, bounds) {
   const xDistance = x - closestX
   const zDistance = z - closestZ
 
-  return (xDistance ** 2) + (zDistance ** 2) < radius ** 2
+  return xDistance ** 2 + zDistance ** 2 < radius ** 2
 }
 
 function canOccupy(x, z, environment) {
   const room = environment.walkableBounds
   const edgeDistance = AVATAR_RADIUS + ROOM_EDGE_PADDING
-  const insideRoom = x >= room.min.x + edgeDistance
-    && x <= room.max.x - edgeDistance
-    && z >= room.min.z + edgeDistance
-    && z <= room.max.z - edgeDistance
+  const insideRoom =
+    x >= room.min.x + edgeDistance &&
+    x <= room.max.x - edgeDistance &&
+    z >= room.min.z + edgeDistance &&
+    z <= room.max.z - edgeDistance
 
-  return insideRoom && !environment.obstacles.some(
-    obstacle => circleIntersectsBounds(x, z, AVATAR_RADIUS, obstacle.bounds),
+  return (
+    insideRoom &&
+    !environment.obstacles.some((obstacle) =>
+      circleIntersectsBounds(x, z, AVATAR_RADIUS, obstacle.bounds),
+    )
   )
 }
 
@@ -266,31 +253,18 @@ export function createAvatarMovementController({
     MIN_CAMERA_DISTANCE,
     MAX_CAMERA_DISTANCE,
   )
-  const startingHorizontalDistance = Math.hypot(
-    startingCameraOffset.x,
-    startingCameraOffset.z,
-  )
-  const startingYaw = Math.atan2(
-    startingCameraOffset.x,
-    startingCameraOffset.z,
-  )
-  const startingPitch = Math.atan2(
-    startingCameraOffset.y,
-    startingHorizontalDistance,
-  )
+  const startingHorizontalDistance = Math.hypot(startingCameraOffset.x, startingCameraOffset.z)
+  const startingYaw = Math.atan2(startingCameraOffset.x, startingCameraOffset.z)
+  const startingPitch = Math.atan2(startingCameraOffset.y, startingHorizontalDistance)
   let cameraYaw = startingYaw
-  let cameraPitch = THREE.MathUtils.clamp(
-    startingPitch,
-    MIN_CAMERA_PITCH,
-    MAX_CAMERA_PITCH,
-  )
+  let cameraPitch = THREE.MathUtils.clamp(startingPitch, MIN_CAMERA_PITCH, MAX_CAMERA_PITCH)
   let cameraDistance = startingCameraDistance
   let orbitPointerId = null
   let orbitPointerType = null
   let lastPointerX = 0
   let lastPointerY = 0
   let touchRunActive = false
-  let cameraMode = CAMERA_MODES.FOLLOW
+  let cameraMode = DEFAULT_CAMERA_MODE
   let followHeading = avatarRoot.rotation.y
   let followIdleDuration = 0
   let followRecentering = false
@@ -373,14 +347,17 @@ export function createAvatarMovementController({
     if (orbitPointerId !== null) return
 
     const bounds = canvas.getBoundingClientRect()
-    if (!shouldStartCameraOrbit({
-      cameraMode,
-      button: event.button,
-      pointerType: event.pointerType,
-      clientX: event.clientX,
-      canvasLeft: bounds.left,
-      canvasWidth: bounds.width,
-    })) return
+    if (
+      !shouldStartCameraOrbit({
+        cameraMode,
+        button: event.button,
+        pointerType: event.pointerType,
+        clientX: event.clientX,
+        canvasLeft: bounds.left,
+        canvasWidth: bounds.width,
+      })
+    )
+      return
 
     orbitPointerId = event.pointerId
     orbitPointerType = event.pointerType
@@ -399,7 +376,7 @@ export function createAvatarMovementController({
 
     cameraYaw -= horizontalMovement * CAMERA_ROTATION_SPEED
     cameraPitch = THREE.MathUtils.clamp(
-      cameraPitch + (verticalMovement * CAMERA_ROTATION_SPEED),
+      cameraPitch + verticalMovement * CAMERA_ROTATION_SPEED,
       MIN_CAMERA_PITCH,
       MAX_CAMERA_PITCH,
     )
@@ -425,14 +402,8 @@ export function createAvatarMovementController({
   }
 
   function resetCamera() {
-    cameraYaw = cameraMode === CAMERA_MODES.FOLLOW
-      ? avatarRoot.rotation.y
-      : startingYaw
-    cameraPitch = THREE.MathUtils.clamp(
-      startingPitch,
-      MIN_CAMERA_PITCH,
-      MAX_CAMERA_PITCH,
-    )
+    cameraYaw = cameraMode === CAMERA_MODES.FOLLOW ? avatarRoot.rotation.y : startingYaw
+    cameraPitch = THREE.MathUtils.clamp(startingPitch, MIN_CAMERA_PITCH, MAX_CAMERA_PITCH)
     cameraDistance = startingCameraDistance
     followHeading = avatarRoot.rotation.y
     followIdleDuration = 0
@@ -476,10 +447,12 @@ export function createAvatarMovementController({
       const forwardZ = -Math.cos(cameraYaw)
       const rightX = Math.cos(cameraYaw)
       const rightZ = -Math.sin(cameraYaw)
-      worldMovement.set(
-        (rightX * movementInput.x) + (forwardX * movementInput.y),
-        (rightZ * movementInput.x) + (forwardZ * movementInput.y),
-      ).normalize()
+      worldMovement
+        .set(
+          rightX * movementInput.x + forwardX * movementInput.y,
+          rightZ * movementInput.x + forwardZ * movementInput.y,
+        )
+        .normalize()
 
       const running = shouldRunMovement({
         keyboardRunActive: pressedRunKeys.size > 0,
@@ -501,10 +474,7 @@ export function createAvatarMovementController({
         avatarRoot.position.z = nextZ
       }
 
-      avatarRoot.rotation.y = Math.atan2(
-        -worldMovement.x,
-        -worldMovement.y,
-      )
+      avatarRoot.rotation.y = Math.atan2(-worldMovement.x, -worldMovement.y)
     }
 
     const movedX = avatarRoot.position.x - previousX
@@ -539,12 +509,14 @@ export function createAvatarMovementController({
 
     return {
       moving,
-      running: moving && shouldRunMovement({
-        keyboardRunActive: pressedRunKeys.size > 0,
-        touchRunActive,
-        touchSideways: touchMovement.x,
-        touchForward: touchMovement.y,
-      }),
+      running:
+        moving &&
+        shouldRunMovement({
+          keyboardRunActive: pressedRunKeys.size > 0,
+          touchRunActive,
+          touchSideways: touchMovement.x,
+          touchForward: touchMovement.y,
+        }),
     }
   }
 

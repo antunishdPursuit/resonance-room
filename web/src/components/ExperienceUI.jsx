@@ -141,7 +141,7 @@ export function ControlsMenu({
         <p>
           {freeCamera
             ? 'Move the view yourself. Follow restores the fixed camera.'
-            : 'Recommended. The view stays stable while you move, then recenters behind Riri.'}
+            : 'The view stays stable while you move, then recenters behind Riri.'}
         </p>
       </fieldset>
 

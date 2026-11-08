@@ -15,10 +15,7 @@ import {
 } from '../src/classroom/avatarMovementController.js'
 
 test('keeps the camera inside a blocking classroom wall', () => {
-  const wall = new THREE.Mesh(
-    new THREE.BoxGeometry(0.2, 3, 4),
-    new THREE.MeshBasicMaterial(),
-  )
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3, 4), new THREE.MeshBasicMaterial())
   wall.position.set(2, 1.5, 0)
   wall.updateMatrixWorld(true)
 
@@ -54,13 +51,16 @@ test('preserves keyboard movement and combines it safely with touch input', () =
   assert.ok(keyboard.sideways > 0)
   assert.ok(keyboard.forward > 0)
 
-  assert.deepEqual(resolveMovementInput({
-    touchSideways: -0.5,
-    touchForward: 0.25,
-  }), {
-    sideways: -0.5,
-    forward: 0.25,
-  })
+  assert.deepEqual(
+    resolveMovementInput({
+      touchSideways: -0.5,
+      touchForward: 0.25,
+    }),
+    {
+      sideways: -0.5,
+      forward: 0.25,
+    },
+  )
 
   const combined = resolveMovementInput({
     pressedKeys: ['KeyW'],
@@ -72,22 +72,31 @@ test('preserves keyboard movement and combines it safely with touch input', () =
 
 test('runs from Shift or an active outer-ring joystick input', () => {
   assert.equal(shouldRunMovement({ keyboardRunActive: true }), true)
-  assert.equal(shouldRunMovement({
-    touchRunActive: true,
-    touchForward: 1,
-  }), true)
-  assert.equal(shouldRunMovement({
-    touchRunActive: false,
-    touchForward: 1,
-  }), false)
-  assert.equal(shouldRunMovement({
-    touchRunActive: true,
-    touchForward: 0,
-    touchSideways: 0,
-  }), false)
+  assert.equal(
+    shouldRunMovement({
+      touchRunActive: true,
+      touchForward: 1,
+    }),
+    true,
+  )
+  assert.equal(
+    shouldRunMovement({
+      touchRunActive: false,
+      touchForward: 1,
+    }),
+    false,
+  )
+  assert.equal(
+    shouldRunMovement({
+      touchRunActive: true,
+      touchForward: 0,
+      touchSideways: 0,
+    }),
+    false,
+  )
 })
 
-test('defaults to fixed follow camera and enables orbit only in free mode', () => {
+test('defaults to free orbit while follow and the touch movement side reject orbit', () => {
   const common = {
     button: 0,
     clientX: 100,
@@ -95,46 +104,72 @@ test('defaults to fixed follow camera and enables orbit only in free mode', () =
     canvasWidth: 400,
   }
 
-  assert.equal(shouldStartCameraOrbit({
-    ...common,
-    pointerType: 'mouse',
-  }), false)
-  assert.equal(shouldStartCameraOrbit({
-    ...common,
-    cameraMode: CAMERA_MODES.FREE,
-    pointerType: 'mouse',
-  }), true)
-  assert.equal(shouldStartCameraOrbit({
-    ...common,
-    cameraMode: CAMERA_MODES.FREE,
-    pointerType: 'touch',
-  }), false)
-  assert.equal(shouldStartCameraOrbit({
-    ...common,
-    cameraMode: CAMERA_MODES.FREE,
-    pointerType: 'touch',
-    clientX: 200,
-  }), true)
-  assert.equal(shouldStartCameraOrbit({
-    ...common,
-    cameraMode: CAMERA_MODES.FREE,
-    pointerType: 'touch',
-    clientX: 350,
-  }), true)
-  assert.equal(shouldStartCameraOrbit({
-    ...common,
-    cameraMode: CAMERA_MODES.FREE,
-    pointerType: 'touch',
-    clientX: 350,
-    button: 2,
-  }), false)
+  assert.equal(
+    shouldStartCameraOrbit({
+      ...common,
+      pointerType: 'mouse',
+    }),
+    true,
+  )
+  assert.equal(
+    shouldStartCameraOrbit({
+      ...common,
+      cameraMode: CAMERA_MODES.FOLLOW,
+      pointerType: 'mouse',
+    }),
+    false,
+  )
+  assert.equal(
+    shouldStartCameraOrbit({
+      ...common,
+      cameraMode: CAMERA_MODES.FREE,
+      pointerType: 'mouse',
+    }),
+    true,
+  )
+  assert.equal(
+    shouldStartCameraOrbit({
+      ...common,
+      cameraMode: CAMERA_MODES.FREE,
+      pointerType: 'touch',
+    }),
+    false,
+  )
+  assert.equal(
+    shouldStartCameraOrbit({
+      ...common,
+      cameraMode: CAMERA_MODES.FREE,
+      pointerType: 'touch',
+      clientX: 200,
+    }),
+    true,
+  )
+  assert.equal(
+    shouldStartCameraOrbit({
+      ...common,
+      cameraMode: CAMERA_MODES.FREE,
+      pointerType: 'touch',
+      clientX: 350,
+    }),
+    true,
+  )
+  assert.equal(
+    shouldStartCameraOrbit({
+      ...common,
+      cameraMode: CAMERA_MODES.FREE,
+      pointerType: 'touch',
+      clientX: 350,
+      button: 2,
+    }),
+    false,
+  )
 })
 
-test('normalizes unsupported camera modes to the fixed follow default', () => {
+test('normalizes unsupported camera modes to the free default', () => {
   assert.equal(normalizeCameraMode(CAMERA_MODES.FOLLOW), CAMERA_MODES.FOLLOW)
   assert.equal(normalizeCameraMode(CAMERA_MODES.FREE), CAMERA_MODES.FREE)
-  assert.equal(normalizeCameraMode('orbit'), CAMERA_MODES.FOLLOW)
-  assert.equal(normalizeCameraMode(), CAMERA_MODES.FOLLOW)
+  assert.equal(normalizeCameraMode('orbit'), CAMERA_MODES.FREE)
+  assert.equal(normalizeCameraMode(), CAMERA_MODES.FREE)
 })
 
 test('damps follow-camera yaw along the shortest turn', () => {
@@ -209,17 +244,23 @@ test('ignores small follow headings and completes a meaningful recenter', () => 
 })
 
 test('recenters behind Riri when collision makes her slide sideways', () => {
-  assert.equal(resolveFollowHeading({
-    currentHeading: 0,
-    avatarYaw: Math.PI / 4,
-    movedX: 0.1,
-    movedZ: 0,
-  }), Math.PI / 4)
+  assert.equal(
+    resolveFollowHeading({
+      currentHeading: 0,
+      avatarYaw: Math.PI / 4,
+      movedX: 0.1,
+      movedZ: 0,
+    }),
+    Math.PI / 4,
+  )
 
-  assert.equal(resolveFollowHeading({
-    currentHeading: 0,
-    avatarYaw: Math.PI / 4,
-    movedX: 0,
-    movedZ: 0,
-  }), 0)
+  assert.equal(
+    resolveFollowHeading({
+      currentHeading: 0,
+      avatarYaw: Math.PI / 4,
+      movedX: 0,
+      movedZ: 0,
+    }),
+    0,
+  )
 })

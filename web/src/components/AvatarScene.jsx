@@ -44,6 +44,7 @@ import {
 } from '../classroom/classroomAppearance.js'
 import {
   CAMERA_MODES,
+  DEFAULT_CAMERA_MODE,
   createAvatarMovementController,
 } from '../classroom/avatarMovementController.js'
 import { createClassroomOcclusionController } from '../classroom/classroomOcclusionController.js'
@@ -157,7 +158,7 @@ export default function AvatarScene({ onBackHome }) {
   const [voiceReminderVisible, setVoiceReminderVisible] = useState(false)
   const [likedPanelOpen, setLikedPanelOpen] = useState(false)
   const [transcriptOpen, setTranscriptOpen] = useState(false)
-  const [cameraMode, setCameraMode] = useState(CAMERA_MODES.FOLLOW)
+  const [cameraMode, setCameraMode] = useState(DEFAULT_CAMERA_MODE)
   const [inspectedClassroomMesh, setInspectedClassroomMesh] = useState(null)
   const [classroomInventory, setClassroomInventory] = useState([])
   const [classroomCollisionZones, setClassroomCollisionZones] = useState([])
@@ -385,7 +386,7 @@ export default function AvatarScene({ onBackHome }) {
       })
       movementControllerRef.current = movementController
       resetCameraRef.current = movementController.resetCamera
-      movementController.setCameraMode(CAMERA_MODES.FOLLOW)
+      movementController.setCameraMode(DEFAULT_CAMERA_MODE)
       if (COLLISION_DEBUG_ENABLED) {
         window.__RIRI_MOVEMENT__ = movementController
       }
