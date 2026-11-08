@@ -199,6 +199,7 @@ Resonance Room grew from the music recommender in [applied-ai-system-project](ht
 - Character movement uses the [Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) by Quaternius under CC0 1.0. The repository includes its license text.
 - The classroom source is recorded in this [Fab listing](https://www.fab.com/listings/a92bc730-55a9-46e5-ae25-4dcd9e6a08f8).
 - The bundled `Riri.vrm` file is the VRoid Project's [AvatarSample_B](https://hub.vroid.com/en/characters/7939147878897061040/models/2292219474373673889). The product name does not replace the source model's identity or license terms.
+- The SVG favicon is a simplified chibi portrait of the bundled character.
 
 ## Status
 
