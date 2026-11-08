@@ -37,6 +37,7 @@ import {
 } from '../classroom/classroomMovementEnvironment.js'
 import { createClassroomCampusEnvironment } from '../classroom/classroomCampusEnvironment.js'
 import { createClassroomDetails } from '../classroom/classroomDetails.js'
+import { completeClassroomCampusViews } from '../classroom/classroomCampusViews.js'
 import {
   applyClassroomAppearance,
   applyClassroomAtmosphere,
@@ -354,6 +355,7 @@ export default function AvatarScene({ onBackHome }) {
     let classroomInspectionCamera = null
     let movementEnvironment = null
     let campusEnvironment = null
+    let campusViews = null
     let classroomAppearance = null
     let classroomDetails = null
     let classroomAtmosphere = null
@@ -466,6 +468,7 @@ export default function AvatarScene({ onBackHome }) {
           roomBounds: movementEnvironment.walkableBounds,
         })
         scene.add(campusEnvironment.object3d)
+        campusViews = completeClassroomCampusViews(campusEnvironment)
         classroomAtmosphere = applyClassroomAtmosphere(campusEnvironment)
         const importedRoomShells = movementEnvironment.classroomMeshes.filter(
           (mesh) => mesh.userData.classroomSource?.nodeIndex === 52,
@@ -855,6 +858,7 @@ export default function AvatarScene({ onBackHome }) {
       delete window.__RIRI_MOVEMENT__
       collisionDebugView?.dispose()
       classroomAtmosphere?.dispose()
+      campusViews?.dispose()
       if (campusEnvironment) scene.remove(campusEnvironment.object3d)
       campusEnvironment?.dispose()
       campusEnvironment = null
