@@ -75,6 +75,19 @@ test('notebook rests on the actual lectern slope and accessories preserve its co
     details.object3d.getObjectByName('Level pencil ledge'),
   )
   assert.ok(Math.abs(cup.min.y - ledge.max.y) < 0.00001)
+  const center = cup.getCenter(new THREE.Vector3())
+  for (let i = 0; i < 8; i++) {
+    const angle = (i * Math.PI) / 4
+    const ray = new THREE.Raycaster(
+      new THREE.Vector3(center.x + Math.cos(angle) * 0.05, 2, center.z + Math.sin(angle) * 0.05),
+      new THREE.Vector3(0, -1, 0),
+    )
+    assert.equal(
+      ray.intersectObject(source).some((hit) => hit.point.y > cup.min.y && hit.point.y < cup.max.y),
+      false,
+      'Cup intersects the upper lectern rim',
+    )
+  }
   const bracket = new THREE.Box3().setFromObject(
     details.object3d.getObjectByName('Pencil ledge bracket'),
   )

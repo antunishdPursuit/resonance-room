@@ -38,19 +38,19 @@ export function createTeacherDetails(classroomMeshes) {
       notebook.add(mesh)
     }
     // Keep the level ledge and cup inside the existing podium collision footprint.
-    add('Level pencil ledge', cube, wood, [0.3, 1.17, 3.55], [0.3, 0.04, 0.24])
+    add('Level pencil ledge', cube, wood, [0.3, 1.17, 3.63], [0.3, 0.04, 0.3])
     add('Pencil ledge bracket', cube, wood, [0.3, 1.09, 3.56], [0.045, 0.14, 0.14])
     const cupWall = own(new THREE.CylinderGeometry(0.055, 0.047, 0.13, 12, 1, true))
     const cupMaterial = own(cream.clone())
     cupMaterial.side = THREE.DoubleSide
-    add('Pencil cup wall', cupWall, cupMaterial, [0.32, 1.255, 3.6], [1, 1, 1])
+    add('Pencil cup wall', cupWall, cupMaterial, [0.32, 1.255, 3.7], [1, 1, 1])
     const disk = own(new THREE.CylinderGeometry(0.047, 0.047, 0.008, 12))
-    add('Pencil cup base', disk, cream, [0.32, 1.194, 3.6], [1, 1, 1])
+    add('Pencil cup base', disk, cream, [0.32, 1.194, 3.7], [1, 1, 1])
     const shaft = own(new THREE.CylinderGeometry(0.006, 0.006, 0.23, 6))
     const tip = own(new THREE.ConeGeometry(0.006, 0.018, 6))
     for (let i = 0; i < 3; i++) {
       const x = 0.299 + i * 0.021
-      const z = 3.6 + (i === 1 ? 0.012 : -0.01)
+      const z = 3.7 + (i === 1 ? 0.012 : -0.01)
       add(`Pencil ${i + 1} shaft`, shaft, i === 1 ? plum : wood, [x, 1.313, z], [1, 1, 1])
       add(`Pencil ${i + 1} tip`, tip, graphite, [x, 1.437, z], [1, 1, 1])
     }
