@@ -26,6 +26,9 @@ export default function RoomLoading({
       onKeyDown={(event) => event.stopPropagation()}
       onKeyUp={(event) => event.stopPropagation()}
     >
+      <div className="room-loading__art" aria-hidden="true">
+        <img src="/preparation-window.jpg" alt="" decoding="async" fetchPriority="low" />
+      </div>
       <div className="room-loading__content">
         {!failed && !rotate && !ready && (
           <span className="loading-screen__ring" aria-hidden="true" />
@@ -35,9 +38,7 @@ export default function RoomLoading({
             ? 'The room couldn’t load'
             : rotate
               ? 'Turn your screen sideways'
-              : ready
-                ? 'The room is ready'
-                : 'Preparing the room…'}
+              : 'Before You Enter'}
         </h1>
         <p role={failed ? 'alert' : 'status'}>
           {failed
@@ -45,14 +46,14 @@ export default function RoomLoading({
             : rotate
               ? 'The room needs more width. Rotate your screen to continue, or return to the homepage.'
               : ready
-                ? 'Read the controls, then select Continue when you’re ready.'
+                ? 'The room is ready'
                 : slow
                   ? 'This is taking a while. You can return home and try again.'
-                  : 'Loading Riri and the classroom.'}
+                  : 'Preparing the room… Loading Riri and the classroom.'}
         </p>
         {!failed && (
-          <section className="room-loading__guide" aria-labelledby="entry-guide-title">
-            <h2 id="entry-guide-title">Before You Enter</h2>
+          <section className="room-loading__guide" aria-label="Room controls">
+            {rotate && <h2>Before You Enter</h2>}
             <ul>
               <li>Move Riri with WASD or the arrow keys. Hold Shift to run.</li>
               <li>On touch screens, use the joystick; push to its outer edge to run.</li>

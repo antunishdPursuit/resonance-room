@@ -107,7 +107,7 @@ test('Continue is enabled only when ready, correctly oriented and not fading', a
     }
     const ready = render({ ready: true })
     assert.match(ready, /The room is ready/)
-    assert.match(ready, /Read the controls, then select Continue/)
+    assert.match(ready, /role="status">The room is ready/)
     assert.doesNotMatch(ready, /loading-screen__ring/)
     assert.match(ready, /<button class="button button--primary">Continue<\/button>/)
     assert.match(ready, /Before You Enter/)
