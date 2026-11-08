@@ -36,7 +36,7 @@ export function createStreetLayout({ classroom, building, road }) {
         markings.push([x + offset, z, 0.12, road.width - 0.4])
       }
       markings.push([x + (side * half) / 2, z + side * (half + 2.25), half - 0.25, 0.12])
-      markings.push([x + side * (half + 2.25), z + (side * half) / 2, 0.12, half - 0.25])
+      markings.push([x + side * (half + 2.25), z - (side * half) / 2, 0.12, half - 0.25])
       for (const quadrant of [-1, 1]) {
         buildings.push({
           x: x + side * (half + walk + 2 + 4),

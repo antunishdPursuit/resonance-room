@@ -52,6 +52,27 @@ for (const length of [10, 16]) {
     )
     const facades = network.object3d.getObjectByName('Neighborhood corner buildings')
     for (const z of junctions) {
+      // Facing each junction, the stop bar belongs to the incoming right-hand lane.
+      for (const side of [-1, 1]) {
+        const bars = network.layout.markings
+        const mainBar = bars.find(
+          (m) => Math.abs(m[1] - z - side * (roadWidth / 2 + 2.25)) < 0.001 && m[3] === 0.12,
+        )
+        const crossBar = bars.find(
+          (m) =>
+            Math.abs(m[0] - roadX - side * (roadWidth / 2 + 2.25)) < 0.001 &&
+            Math.abs(m[1] - z) < roadWidth / 2 &&
+            m[2] === 0.12,
+        )
+        assert.ok(
+          mainBar && (mainBar[0] - roadX) * side > 0,
+          'Main stop bar is on the outgoing lane',
+        )
+        assert.ok(
+          crossBar && (crossBar[1] - z) * side < 0,
+          'Cross-street stop bar is on the outgoing lane',
+        )
+      }
       for (const [dx, dz] of [
         [1, 0],
         [-1, 0],
