@@ -36,6 +36,7 @@ import {
   createCollisionDebugView,
 } from '../classroom/classroomMovementEnvironment.js'
 import { createClassroomCampusEnvironment } from '../classroom/classroomCampusEnvironment.js'
+import { createClassroomDetails } from '../classroom/classroomDetails.js'
 import {
   applyClassroomAppearance,
   createClassroomLighting,
@@ -348,6 +349,7 @@ export default function AvatarScene({ onBackHome }) {
     let movementEnvironment = null
     let campusEnvironment = null
     let classroomAppearance = null
+    let classroomDetails = null
     let cameraBlockers = null
     let sceneOcclusionMeshes = null
     let movementController = null
@@ -412,7 +414,7 @@ export default function AvatarScene({ onBackHome }) {
     const scene = new THREE.Scene()
 
     // Camera
-    const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 60)
+    const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 60)
     positionOpeningCamera(camera)
 
     if (CLASSROOM_INSPECTION_ENABLED) {
@@ -446,6 +448,8 @@ export default function AvatarScene({ onBackHome }) {
           parser: gltf.parser,
         })
         classroomAppearance = applyClassroomAppearance(movementEnvironment.classroomMeshes)
+        classroomDetails = createClassroomDetails(movementEnvironment.classroomMeshes)
+        scene.add(classroomDetails.object3d)
         campusEnvironment = createClassroomCampusEnvironment({
           roomBounds: movementEnvironment.walkableBounds,
         })
@@ -845,6 +849,7 @@ export default function AvatarScene({ onBackHome }) {
       }
       recommendationBoardRef.current = null
       classroomAppearance?.dispose()
+      classroomDetails?.dispose()
       classroomLighting.dispose()
       VRMUtils.deepDispose(scene)
       vrmRef.current = null
