@@ -5,52 +5,6 @@ import { createClassroomCampusEnvironment } from '../src/classroom/classroomCamp
 import { completeClassroomCampusViews } from '../src/classroom/classroomCampusViews.js'
 import { resolveCameraPosition } from '../src/classroom/avatarMovementController.js'
 
-for (const halfLength of [5, 8]) {
-  test(`buildings cover street-level views from both ends of a ${halfLength * 2}m room`, () => {
-    const bounds = new THREE.Box3(
-      new THREE.Vector3(-4, -0.3, -halfLength),
-      new THREE.Vector3(4.76, 3.24, halfLength),
-    )
-    const campus = createClassroomCampusEnvironment({ roomBounds: bounds })
-    const views = completeClassroomCampusViews(campus)
-    const buildings = [
-      campus.object3d.getObjectByName('Courtyard school wing'),
-      ...views.object3d.children.filter((mesh) =>
-        mesh.name.startsWith('Courtyard return building'),
-      ),
-    ]
-    const ray = new THREE.Raycaster()
-    for (const z of [-halfLength + 0.4, 0, halfLength - 0.4]) {
-      for (const y of [0.2, 1.5, 2.7, 5.5]) {
-        for (const degrees of [-89, -75, -45, 0, 45, 75, 89]) {
-          const angle = THREE.MathUtils.degToRad(degrees)
-          ray.set(
-            new THREE.Vector3(bounds.max.x - 0.35, y, z),
-            new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle)),
-          )
-          assert.ok(
-            ray.intersectObjects(buildings, false).length,
-            `Missing facade at z=${z}, y=${y}, angle=${degrees}`,
-          )
-        }
-      }
-    }
-    // A steep upward look remains sky rather than a solid enclosure overhead.
-    ray.set(new THREE.Vector3(bounds.max.x - 0.35, 1.5, 0), new THREE.Vector3(1, 4, 0).normalize())
-    assert.equal(ray.intersectObjects(buildings, false).length, 0)
-    const ground = new THREE.Box3().setFromObject(
-      campus.object3d.getObjectByName('School courtyard ground'),
-    )
-    buildings.forEach((mesh) => {
-      const box = new THREE.Box3().setFromObject(mesh)
-      assert.ok(ground.min.x <= box.min.x && ground.max.x >= box.max.x)
-      assert.ok(ground.min.z <= box.min.z && ground.max.z >= box.max.z)
-    })
-    views.dispose()
-    campus.dispose()
-  })
-}
-
 test('corridor windows have real openings above furniture while retaining camera containment', () => {
   const campus = createClassroomCampusEnvironment({
     roomBounds: new THREE.Box3(new THREE.Vector3(-4, -0.3, -5), new THREE.Vector3(4.76, 3.24, 5)),

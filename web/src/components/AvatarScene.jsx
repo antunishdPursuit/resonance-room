@@ -421,6 +421,7 @@ export default function AvatarScene({ onBackHome }) {
 
     // Scene
     const scene = new THREE.Scene()
+    scene.fog = new THREE.Fog(0xf2d6b5, 35, 60)
 
     // Camera
     const camera = new THREE.PerspectiveCamera(
