@@ -7,6 +7,28 @@ import { fileURLToPath } from 'node:url'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 
+test('mixed-input controls retain touch, keyboard and mouse instructions', async () => {
+  const server = await createServer({ root, server: { middlewareMode: true }, appType: 'custom' })
+  try {
+    const { ControlsMenu } = await server.ssrLoadModule('/src/components/ExperienceUI.jsx')
+    const markup = renderToStaticMarkup(
+      createElement(ControlsMenu, {
+        open: true,
+        isPhone: false,
+        touchControls: true,
+        cameraMode: 'free',
+        isStatic: true,
+      }),
+    )
+    assert.match(markup, /Joystick, WASD or arrow keys/)
+    assert.match(markup, /hold Shift/)
+    assert.match(markup, /Use the mouse wheel/)
+    assert.match(markup, /right side on touch/)
+  } finally {
+    await server.close()
+  }
+})
+
 for (const mode of ['static', 'backend']) {
   test(`homepage describes the actual ${mode} recommendation controls`, async () => {
     const server = await createServer({

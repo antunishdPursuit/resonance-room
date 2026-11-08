@@ -16,7 +16,7 @@ Music recommenders often hide their logic behind a search box or an opaque feed.
 
 ## What You Can Do
 
-- Enter through a shared loading and Ready experience that explains the controls
+- Start from the homepage and About panel; enter while Riri and the classroom load
 - Choose Chill, Focus, Energy, Feel-good, Moody, or Surprise me
 - Receive six deterministic recommendations from a 36-song stored catalog
 - Get a fresh set when a vibe repeats and unused matches remain
@@ -25,7 +25,7 @@ Music recommenders often hide their logic behind a search box or an opaque feed.
 - Orbit, zoom, follow, and reset the camera
 - Review a timed response bubble and retained session transcript
 - Enable optional browser speech from Controls
-- Use landscape touch movement and camera controls on a phone
+- Use touch movement on tablets and phones; narrow touch screens require landscape
 
 The surrounding hallway, courtyard wing, and school exterior provide visual context. They are not a fully explorable campus.
 

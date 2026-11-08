@@ -74,6 +74,7 @@ import {
   classifyPhoneViewport,
   getEntryState,
   shouldShowMobileControls,
+  supportsTouchControls,
 } from '../ui/mobileControls.js'
 
 const APP_CONFIG = createAppConfig({
@@ -101,13 +102,14 @@ function readPhoneViewport() {
     navigator.userAgentData?.mobile === true ||
     /Android|iPhone|iPod|Mobile/i.test(navigator.userAgent)
 
-  return classifyPhoneViewport({
+  const viewport = {
     width: window.innerWidth,
     height: window.innerHeight,
     coarsePointer: PHONE_DEBUG_ENABLED || window.matchMedia('(pointer: coarse)').matches,
     touchCapable: navigator.maxTouchPoints > 0,
     mobileUserAgent,
-  })
+  }
+  return { ...classifyPhoneViewport(viewport), touchControls: supportsTouchControls(viewport) }
 }
 
 export default function AvatarScene({ onBackHome }) {
@@ -175,8 +177,8 @@ export default function AvatarScene({ onBackHome }) {
   const experienceAssetsReady =
     !roomLoadFailed && classroomReady && openingGreetingReady && movementReady
   const mobileControlsActive = shouldShowMobileControls({
-    isPhone: isPhoneExperience,
-    isLandscape: isPhoneLandscape,
+    isPhone: phoneViewport.touchControls,
+    isLandscape: !isPhoneExperience || isPhoneLandscape,
     entryStarted,
     loaderVisible,
   })
@@ -1069,8 +1071,13 @@ export default function AvatarScene({ onBackHome }) {
       className="riri-app"
       data-phone={isPhoneExperience}
       data-phone-landscape={isPhoneLandscape}
+      data-touch-controls={phoneViewport.touchControls}
     >
-      <canvas ref={canvasRef} className="riri-canvas" />
+      <canvas
+        ref={canvasRef}
+        className="riri-canvas"
+        style={{ touchAction: phoneViewport.touchControls ? 'none' : undefined }}
+      />
 
       {/* Loading screen */}
       {loaderVisible && (
@@ -1465,6 +1472,7 @@ export default function AvatarScene({ onBackHome }) {
           <ControlsMenu
             cameraMode={cameraMode}
             isPhone={isPhoneExperience}
+            touchControls={phoneViewport.touchControls}
             isStatic={!APP_CONFIG.usesBackend}
             movementReady={movementReady}
             onCameraModeChange={changeCameraMode}

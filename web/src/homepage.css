@@ -21,7 +21,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1.5rem var(--home-space);
+  padding: max(1.5rem, env(safe-area-inset-top)) max(var(--home-space), env(safe-area-inset-right))
+    1.5rem max(var(--home-space), env(safe-area-inset-left));
 }
 
 .home__brand {
@@ -50,7 +51,8 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 8rem var(--home-space) 5rem;
+  padding: 8rem max(var(--home-space), env(safe-area-inset-right)) 5rem
+    max(var(--home-space), env(safe-area-inset-left));
   position: relative;
 }
 
@@ -98,7 +100,7 @@
 
 .home__catalog {
   position: absolute;
-  bottom: 1rem;
+  bottom: max(1rem, env(safe-area-inset-bottom));
   font-size: 0.875rem;
   color: var(--riri-muted);
 }
@@ -143,6 +145,7 @@
 }
 
 .home__dialog {
+  margin: auto;
   width: min(32rem, calc(100% - 2.5rem));
   max-height: calc(100dvh - 2.5rem);
   padding: 1.5rem;
@@ -164,6 +167,7 @@
 }
 
 .home__dialog h2 {
+  margin-top: 1rem;
   font:
     700 2rem/1.2 'Space Grotesk',
     sans-serif;
@@ -174,12 +178,36 @@
   font-size: 0.875rem;
 }
 
+.home__dialog p {
+  margin-top: 1rem;
+}
+
+.riri-app[data-touch-controls='true'][data-phone='false'] .gameplay-actions {
+  --touch-clearance: 124px;
+  left: calc(max(10px, env(safe-area-inset-left)) + var(--touch-clearance));
+  right: max(10px, env(safe-area-inset-right));
+  width: fit-content;
+  max-width: calc(
+    100dvw - max(10px, env(safe-area-inset-left)) - max(10px, env(safe-area-inset-right)) -
+      var(--touch-clearance)
+  );
+  margin-inline: auto;
+  transform: none;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.riri-app[data-touch-controls='true'][data-phone='false'] .gameplay-actions .button {
+  min-height: 44px;
+  font-size: 0.875rem;
+}
+
 @media (max-width: 899px) {
   .home__layout {
     grid-template-columns: minmax(0, 1fr);
   }
   .home__copy {
-    padding: 7rem var(--home-space) 4rem;
+    padding-block: 7rem 4rem;
   }
   .home__doorway {
     min-height: clamp(16rem, 55vw, 30rem);

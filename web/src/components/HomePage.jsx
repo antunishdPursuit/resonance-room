@@ -49,7 +49,7 @@ export default function HomePage({ onEnter, returning = false }) {
               <summary>Before you enter</summary>
               <p>
                 Use WASD or the arrow keys to move Riri. Hold Shift to run. On touch screens, use
-                the movement joystick in landscape.
+                the movement joystick. Smaller screens need landscape.
               </p>
               <p>The camera follows Riri automatically. Voice is off until you enable it.</p>
             </details>

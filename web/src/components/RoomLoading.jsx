@@ -22,7 +22,7 @@ export default function RoomLoading({ failed = false, rotate = false, fading = f
           {failed
             ? 'Check your connection, then reload the page to try again.'
             : rotate
-              ? 'The room needs landscape on touch screens. You can return to the homepage in either orientation.'
+              ? 'The room needs more width. Rotate your screen to continue, or return to the homepage.'
               : slow
                 ? 'This is taking a while. You can return home and try again.'
                 : 'Loading Riri and the classroom.'}

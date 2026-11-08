@@ -26,7 +26,7 @@ export function OrientationGate() {
       <PhoneRotationGraphic />
       <div className="loading-screen__copy experience-entry__copy">
         <div className="loading-screen__title" id="orientation-resume-title">
-          Turn your phone sideways
+          Turn your screen sideways
         </div>
         <p className="loading-screen__status">Return to landscape to continue with Riri.</p>
       </div>
@@ -38,6 +38,7 @@ export function ControlsMenu({
   cameraMode,
   closeLabel = 'Close',
   isPhone,
+  touchControls = isPhone,
   isStatic,
   movementReady,
   onCameraModeChange,
@@ -50,6 +51,21 @@ export function ControlsMenu({
   if (!open) return null
 
   const freeCamera = cameraMode === 'free'
+  const moveHint = isPhone
+    ? 'Hold and drag the joystick'
+    : touchControls
+      ? 'Joystick, WASD or arrow keys'
+      : 'WASD or arrow keys'
+  const runHint = isPhone
+    ? 'Push the joystick to its outer edge'
+    : touchControls
+      ? 'Joystick outer edge, or hold Shift while moving'
+      : 'Hold Shift while moving'
+  const lookHint = isPhone
+    ? 'Drag the right side'
+    : touchControls
+      ? 'Mouse drag, or drag the right side on touch'
+      : 'Drag the classroom'
 
   return (
     <section className="controls-menu" aria-label="Controls">
@@ -63,11 +79,11 @@ export function ControlsMenu({
       <dl className="controls-menu__guide">
         <div>
           <dt>Move</dt>
-          <dd>{isPhone ? 'Hold and drag the joystick' : 'WASD or arrow keys'}</dd>
+          <dd>{moveHint}</dd>
         </div>
         <div>
           <dt>Run</dt>
-          <dd>{isPhone ? 'Push the joystick to its outer edge' : 'Hold Shift while moving'}</dd>
+          <dd>{runHint}</dd>
         </div>
         {!freeCamera && (
           <div>
@@ -78,7 +94,7 @@ export function ControlsMenu({
         {freeCamera && (
           <div>
             <dt>Look</dt>
-            <dd>{isPhone ? 'Drag the right side' : 'Drag the classroom'}</dd>
+            <dd>{lookHint}</dd>
           </div>
         )}
         {freeCamera && !isPhone && (
