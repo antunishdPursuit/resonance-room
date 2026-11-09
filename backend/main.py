@@ -13,6 +13,7 @@ import anthropic
 import httpx
 from dotenv import load_dotenv
 from backend.recommendation_tools import recommendation_calls, recommendation_results
+from backend.discovery import discover, is_bare_music_request
 
 load_dotenv()
 
@@ -69,14 +70,19 @@ SYSTEM_PROMPT = (
     "IMPORTANT: Whenever the user mentions music, songs, artists, genres, moods, or asks what to listen to, "
     "you MUST call the get_recommendations tool — never answer music questions from your own knowledge. "
     "After getting results, respond in 2 sentences max since your words are spoken aloud. "
-    "Mention 1 or 2 song titles by name to make it feel personal."
+    "Mention 1 or 2 song titles by name to make it feel personal. "
+    "Only supply a genre the user actually requested; never infer one from a mood or activity. "
+    "Use mood for activities such as focused, chill, energetic, happy, sad or relaxed. "
+    "Omit both criteria for broad discovery. Results use community tag evidence, not measured "
+    "audio features. Do not claim verified energy or mood; acknowledge fewer matches when needed."
 )
 
 TOOLS = [
     {
         "name": "get_recommendations",
         "description": (
-            "Fetch real song recommendations from Last.fm by genre and mood. "
+            "Fetch real tracks from Last.fm using an optional explicit genre and mood/activity. "
+            "Omit genre when none was requested; omit both for broad discovery. "
             "Use this whenever the user asks for music suggestions."
         ),
         "input_schema": {
@@ -84,14 +90,18 @@ TOOLS = [
             "properties": {
                 "genre": {
                     "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
                     "description": "Music genre, e.g. lofi, pop, rock, jazz, hip-hop, classical, electronic",
                 },
                 "mood": {
                     "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
                     "description": "Optional mood or vibe, e.g. chill, happy, energetic, sad, focused",
                 },
             },
-            "required": ["genre"],
+            "additionalProperties": False,
         },
     }
 ]
@@ -134,8 +144,8 @@ MUSIC_KEYWORDS = {
 }
 
 
-async def fetch_tracks(tag: str, limit: int = 6) -> list:
-    """Call Last.fm tag.gettoptracks and return the track list."""
+async def fetch_tracks(tag: str | None, limit: int = 6) -> list:
+    """Use tag discovery, or charts when no preference was supplied."""
     api_key = os.getenv("LASTFM_API_KEY")
     try:
         async with httpx.AsyncClient(
@@ -144,8 +154,8 @@ async def fetch_tracks(tag: str, limit: int = 6) -> list:
             resp = await http.get(
                 LASTFM_BASE,
                 params={
-                    "method": "tag.gettoptracks",
-                    "tag": tag.lower(),
+                    "method": "tag.gettoptracks" if tag is not None else "chart.gettoptracks",
+                    **({"tag": tag.lower()} if tag is not None else {}),
                     "api_key": api_key,
                     "format": "json",
                     "limit": limit,
@@ -162,6 +172,47 @@ async def fetch_tracks(tag: str, limit: int = 6) -> list:
     if not isinstance(container, dict) or not isinstance(container.get("track"), list):
         raise ProviderError("Last.fm returned an unexpected response")
     return container["track"]
+
+
+async def fetch_track_tags(track: dict) -> list[str]:
+    """Unusable optional metadata is unknown, never synthetic evidence."""
+    try:
+        async with httpx.AsyncClient(
+            timeout=PROVIDER_TIMEOUT, headers=LASTFM_HEADERS, follow_redirects=False
+        ) as http:
+            resp = await http.get(
+                LASTFM_BASE,
+                params={
+                    "method": "track.gettoptags",
+                    "artist": track["artist"],
+                    "track": track["title"],
+                    "api_key": os.getenv("LASTFM_API_KEY"),
+                    "format": "json",
+                },
+            )
+            resp.raise_for_status()
+            payload = resp.json()
+    except (httpx.HTTPError, ValueError):
+        return []
+    if not isinstance(payload, dict) or "error" in payload:
+        return []
+    container = payload.get("toptags")
+    records = container.get("tag") if isinstance(container, dict) else None
+    if not isinstance(records, list):
+        return []
+    tags = []
+    for record in records[:64]:
+        if not isinstance(record, dict) or not isinstance(record.get("name"), str):
+            continue
+        try:
+            count = int(record.get("count", 0))
+        except (ValueError, TypeError, OverflowError):
+            continue
+        name = record["name"].strip()
+        if 0 < len(name) <= 64 and count > 0:
+            tags.append((name, count))
+    threshold = max((count for _, count in tags), default=0) * 0.1
+    return [name for name, count in tags if count >= threshold]
 
 
 def _format_tracks(tracks: list) -> list[dict]:
@@ -228,7 +279,9 @@ async def chat(request: ChatRequest):
     history = [{"role": m.role, "content": m.content} for m in request.messages]
 
     last_msg = request.messages[-1].content.lower()
-    is_music = any(kw in last_msg for kw in MUSIC_KEYWORDS)
+    # Bare activity replies fit the composer's music context; longer activity
+    # questions stay optional so ordinary nonmusic chat is not forced into a lookup.
+    is_music = any(kw in last_msg for kw in MUSIC_KEYWORDS) or is_bare_music_request(last_msg)
     tool_choice = {"type": "any"} if is_music else {"type": "auto"}
 
     client = _anthropic_client()
@@ -254,16 +307,9 @@ async def chat(request: ChatRequest):
                 status_code=502, detail="Music assistant provider unavailable"
             ) from exc
 
-        groups = []
         try:
-            for tool_block in tool_blocks:
-                tracks = _format_tracks(await fetch_tracks(tool_block.input["genre"]))
-                # Fall back to mood tag if the genre tag returns nothing on Last.fm.
-                mood = tool_block.input.get("mood")
-                if not tracks and mood:
-                    tracks = _format_tracks(await fetch_tracks(mood))
-                groups.append(tracks)
-        except ProviderError as exc:
+            groups = await discover(tool_blocks, fetch_tracks, fetch_track_tags, _format_tracks)
+        except (ProviderError, TimeoutError) as exc:
             raise HTTPException(status_code=502, detail="Music data provider unavailable") from exc
 
         recommendations, tool_results = recommendation_results(tool_blocks, groups)

@@ -7,11 +7,19 @@ The public static demo uses deterministic content-based scoring over 108 synthet
 | Path | Source | Selection |
 | --- | --- | --- |
 | Public static frontend | 108 synthetic records in `web/src/recommendations/songCatalog.js` | Fixed weighted scoring, repeat avoidance, and artist variety |
-| Optional local AI backend | Real tracks from Last.fm, requested through Claude tool calls | Genre-tag lookup; mood-tag lookup only when genre results are empty; up to six unique results |
+| Optional local AI backend | Real tracks from Last.fm, requested through Claude tool calls | Combined genre/mood tag discovery, evidence-based filtering and ranking; up to six unique results |
 
 The local AI backend requires both `ANTHROPIC_API_KEY` and `LASTFM_API_KEY`. Missing or blank keys produce HTTP 503 with a setup message. It does not silently substitute synthetic songs. Static mode does not call the backend or require provider keys.
 
 The scoring below describes only the public static catalog. Live Last.fm results do not carry equivalent numeric audio attributes and do not use this formula.
+
+### Local Last.fm matching
+
+Claude supplies a genre only when requested. Mood/activity alone is valid; omitting both uses Last.fm's top-track chart for broad discovery. Genre and mood are queried together even when the genre lookup succeeds. Focus/study share an activity tag, and related mood tags receive partial credit instead of requiring identical spelling.
+
+Candidates carry their query-tag provenance and, for mood requests, track top tags. An explicit genre requires supporting evidence; a requested mood requires exact/related evidence. Ranking uses genre support (2 points) plus mood similarity (up to 1 point), with retrieval order breaking ties. These points are not the static audio-feature formula or enjoyment probabilities. Optional malformed/unavailable track tags remain unknown. Tags below 10% of a track's highest tag count are ignored. Community tags are imperfect proxies, not measured audio energy, tempo or valence; sad does not imply low energy.
+
+Each chat accepts at most four recommendation tool calls, two queries per call and 12 candidates per query. Queries are deduplicated within the request; a fair, unique 24-track pool is enriched with at most four concurrent metadata requests. Discovery has a 20-second deadline and returns at most six unique tracks. There is no persistent cache. Insufficient evidence can return fewer tracks or a clear no-match response without synthetic substitutes; provider failures use the existing safe error response. No additional Claude pass or voice call is added.
 
 The 108-record static catalog includes calm/focused, high-energy, uplifting, darker-mood, and moderate discovery examples across multiple genres. Songs can suit more than one vibe. Catalog coverage does not change the fixed scoring rules or establish real-world listening quality.
 

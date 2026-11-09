@@ -1,8 +1,8 @@
 def recommendation_calls(content):
     calls = [block for block in content if block.type == "tool_use"]
     seen = set()
-    if not calls:
-        raise ValueError("Missing recommendation calls")
+    if not 1 <= len(calls) <= 4:
+        raise ValueError("Expected one to four recommendation calls")
     for call in calls:
         args = call.input
         if (
@@ -11,9 +11,11 @@ def recommendation_calls(content):
             or not call.id.strip()
             or call.id in seen
             or not isinstance(args, dict)
-            or not isinstance(args.get("genre"), str)
-            or not args["genre"].strip()
-            or (args.get("mood") is not None and not isinstance(args["mood"], str))
+            or set(args) - {"genre", "mood"}
+            or any(
+                not isinstance(value, str) or not value.strip() or len(value) > 64
+                for value in args.values()
+            )
         ):
             raise ValueError("Invalid recommendation call")
         seen.add(call.id)

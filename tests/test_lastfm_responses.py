@@ -7,13 +7,18 @@ from httpx import ASGITransport, AsyncClient, MockTransport, Response
 from backend import main as api
 
 
-def install_lastfm(monkeypatch, payloads):
+def install_lastfm(monkeypatch, payloads, metadata=None):
     requests = []
 
     def handle(outgoing):
-        tag = outgoing.url.params["tag"]
+        if outgoing.url.params["method"] == "track.gettoptags":
+            tags = (metadata or {}).get(outgoing.url.params["track"], [])
+            return Response(
+                200, json={"toptags": {"tag": [{"name": tag, "count": "100"} for tag in tags]}}
+            )
+        tag = outgoing.url.params.get("tag")
         requests.append(tag)
-        return Response(200, json=payloads[tag])
+        return Response(200, json=payloads[tag if tag is not None else "__chart__"])
 
     monkeypatch.setenv("LASTFM_API_KEY", "test-key")
     monkeypatch.setattr(
@@ -24,7 +29,7 @@ def install_lastfm(monkeypatch, payloads):
     return requests
 
 
-def install_assistant(monkeypatch):
+def install_assistant(monkeypatch, criteria=None):
     calls = []
 
     class Messages:
@@ -38,7 +43,9 @@ def install_assistant(monkeypatch):
                             type="tool_use",
                             name="get_recommendations",
                             id="a",
-                            input={"genre": "jazz", "mood": "chill"},
+                            input=criteria
+                            if criteria is not None
+                            else {"genre": "jazz", "mood": "chill"},
                         )
                     ],
                 )
@@ -48,17 +55,18 @@ def install_assistant(monkeypatch):
             )
 
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setenv("LASTFM_API_KEY", "test-key")
     monkeypatch.setattr(api, "_anthropic_client", lambda: SimpleNamespace(messages=Messages()))
     return calls
 
 
-def request():
+def request(message="Recommend jazz music"):
     async def send():
         async with AsyncClient(
             transport=ASGITransport(app=api.app), base_url="http://testserver"
         ) as client:
             return await client.post(
-                "/chat", json={"messages": [{"role": "user", "content": "Recommend jazz music"}]}
+                "/chat", json={"messages": [{"role": "user", "content": message}]}
             )
 
     return asyncio.run(send())
@@ -103,6 +111,7 @@ def test_legitimate_empty_genre_tries_mood_and_handles_no_matches_explicitly(mon
             "jazz": {"tracks": {"track": []}},
             "chill": {"tracks": {"track": [track] if found else []}},
         },
+        {"Matching track": ["jazz", "chill"]},
     )
     response = request()
     assert response.status_code == 200

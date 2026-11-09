@@ -114,9 +114,19 @@ def test_chat_returns_safe_error_when_lastfm_fails(monkeypatch):
     assert "private provider details" not in response.text
 
 
-def test_chat_awaits_async_anthropic_client(monkeypatch):
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Hello Riri",
+        "How do I focus while studying for an exam?",
+        "I finished a workout.",
+        "I need to relax after work.",
+    ],
+)
+def test_chat_awaits_async_anthropic_client(monkeypatch, message):
     class FakeMessages:
         async def create(self, **_kwargs):
+            assert _kwargs["tool_choice"] == {"type": "auto"}
             return SimpleNamespace(
                 stop_reason="end_turn",
                 content=[SimpleNamespace(type="text", text="Try something upbeat.")],
@@ -131,7 +141,7 @@ def test_chat_awaits_async_anthropic_client(monkeypatch):
         "POST",
         "/chat",
         json={
-            "messages": [{"role": "user", "content": "Hello Riri"}],
+            "messages": [{"role": "user", "content": message}],
         },
     )
 

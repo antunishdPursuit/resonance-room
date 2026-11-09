@@ -26,7 +26,7 @@ def install_provider(monkeypatch, blocks, tracks, final=None):
                 content=[SimpleNamespace(type="text", text="Try these songs.")],
             )
 
-    async def fetch(tag):
+    async def fetch(tag, limit=6):
         fetches.append(tag)
         return tracks.get(tag, [])
 
@@ -105,6 +105,10 @@ def test_duplicate_tracks_are_not_duplicated_or_described_as_missing(monkeypatch
         [],
         [tool("a", [])],
         [tool("a", "jazz", mood={})],
+        [tool("a", "jazz", mood=" ")],
+        [tool("a", "jazz", unknown="value")],
+        [tool("a", "j" * 65)],
+        [tool(str(i), "jazz") for i in range(5)],
         [tool("a", "jazz"), tool("a", "rock")],
         [tool("", "jazz")],
         [SimpleNamespace(type="tool_use", name="unknown", id="a", input={"genre": "jazz"})],
