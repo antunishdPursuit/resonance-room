@@ -1,17 +1,19 @@
 # How the Music Recommender Works
 
-The public static demo uses deterministic content-based scoring over 36 synthetic songs. The optional local AI backend uses Claude and Last.fm to discover real tracks. These are separate recommendation paths.
+The public static demo uses deterministic content-based scoring over 100 synthetic songs. The optional local AI backend uses Claude and Last.fm to discover real tracks. These are separate recommendation paths.
 
 ## Two Recommendation Paths
 
 | Path | Source | Selection |
 | --- | --- | --- |
-| Public static frontend | 36 synthetic records in `web/src/recommendations/songCatalog.js` | Fixed weighted scoring, repeat avoidance, and artist variety |
+| Public static frontend | 100 synthetic records in `web/src/recommendations/songCatalog.js` | Fixed weighted scoring, repeat avoidance, and artist variety |
 | Optional local AI backend | Real tracks from Last.fm, requested through Claude tool calls | Genre-tag lookup; mood-tag lookup only when genre results are empty; up to six unique results |
 
 The local AI backend requires both `ANTHROPIC_API_KEY` and `LASTFM_API_KEY`. Missing or blank keys produce HTTP 503 with a setup message. It does not silently substitute synthetic songs. Static mode does not call the backend or require provider keys.
 
 The scoring below describes only the public static catalog. Live Last.fm results do not carry equivalent numeric audio attributes and do not use this formula.
+
+The 100-record static catalog includes calm/focused, high-energy, uplifting, darker-mood, and moderate discovery examples across multiple genres. Songs can suit more than one vibe. Catalog coverage does not change the fixed scoring rules or establish real-world listening quality.
 
 ## Song Attributes
 

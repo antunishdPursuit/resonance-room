@@ -61,7 +61,7 @@ export default function HomePage({ onEnter, returning = false }) {
         <p>
           {config.usesBackend
             ? 'This version connects to the local recommendation server. Tell Riri what you like, explore six recommendations, and like your favorites.'
-            : 'This public demo uses a built-in catalog of 36 songs. Choose a vibe, explore six recommendations, and like your favorites.'}
+            : 'This public demo uses a built-in catalog of 100 songs. Choose a vibe, explore six recommendations, and like your favorites.'}
         </p>
         <p>
           In local mode, Riri can use Claude to interpret your request and Last.fm to find

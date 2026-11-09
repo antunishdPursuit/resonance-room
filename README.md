@@ -6,7 +6,7 @@
 
 Resonance Room is an interactive 3D music-discovery experience. Explore a virtual classroom, choose a vibe, receive six song recommendations, and keep a liked list for the current session.
 
-The public demo runs entirely in the browser with a transparent, deterministic 36-song catalog. It does not require an account, backend, provider key, or paid API.
+The public demo runs entirely in the browser with a transparent, deterministic 100-song catalog. It does not require an account, backend, provider key, or paid API.
 
 > **Character name:** Riri is the current product character name. The bundled source model remains AvatarSample_B.
 
@@ -18,7 +18,7 @@ Music recommenders often hide their logic behind a search box or an opaque feed.
 
 - Start from the homepage and About panel; enter while Riri and the classroom load
 - Choose Chill, Focus, Energy, Feel-good, Moody, or Surprise me
-- Receive six deterministic recommendations from a 36-song stored catalog
+- Receive six deterministic recommendations from a 100-song stored catalog
 - Get a fresh set when a vibe repeats and unused matches remain
 - Like songs and receive a session-only taste summary after five compatible likes
 - Walk or run through a collision-aware classroom
@@ -35,7 +35,7 @@ The surrounding hallway, courtyard wing, and school exterior provide visual cont
 Visitor
   -> React + Three.js classroom
   -> one of six guided vibe profiles
-  -> deterministic scoring over a bundled 36-song catalog
+  -> deterministic scoring over a bundled 100-song catalog
   -> six songs, response, transcript, and liked-song panel
   -> optional browser speech
 ```
@@ -180,7 +180,7 @@ ESLint dependency advisory; JSX/glob behavior is covered by quality tests.
 
 ## Current Limits
 
-- The static catalog contains 36 synthetic records and six preset vibes.
+- The static catalog contains 100 synthetic records and six preset vibes.
 - Exact genre and mood labels can outweigh otherwise similar audio attributes.
 - The catalog represents a narrow range of music and cultural contexts.
 - Static likes change response wording after five compatible selections but do not retrain the ranking formula.
