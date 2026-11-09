@@ -67,6 +67,7 @@ import { isSongSelected, removeSongSelection, toggleSongSelection } from '../ui/
 import { calculateSpeechBubblePosition } from '../ui/speechBubblePosition.js'
 import { createAppConfig } from '../config/appConfig.js'
 import { createChatClient } from '../chat/chatClient.js'
+import { canStartChatExchange, MAX_CHAT_MESSAGES } from '../chat/chatSession.js'
 import { GUIDED_VIBES } from '../recommendations/fallbackRecommender.js'
 import { deriveTasteProfile } from '../recommendations/tasteProfile.js'
 import { createBackendVoiceClient } from '../voice/backendVoiceClient.js'
@@ -91,7 +92,6 @@ const APP_CONFIG = createAppConfig({
 })
 const REQUEST_CHAT_REPLY = createChatClient({ appConfig: APP_CONFIG })
 const BACKEND_VOICE = createBackendVoiceClient({ appConfig: APP_CONFIG })
-const MAX_CHAT_MESSAGES = 20
 const SPEECH_BUBBLE_VISIBLE_MS = 7000
 const WELCOME_PROMPT = APP_CONFIG.usesBackend
   ? 'Hi, I\u2019m Riri. What kind of songs do you like? You can name a genre, artist, mood, or activity.'
@@ -227,7 +227,7 @@ export default function AvatarScene({ onBackHome }) {
     movementControllerRef.current?.cancelTouchInput()
   }, [mobileControlsActive])
 
-  const chatLimitReached = messages.length >= MAX_CHAT_MESSAGES
+  const chatLimitReached = !canStartChatExchange(messages.length)
   const latestRiriMessage = messages
     .slice()
     .reverse()
@@ -926,7 +926,7 @@ export default function AvatarScene({ onBackHome }) {
 
   async function sendMessage(text) {
     // Reserve space for both the user's message and Riri's reply.
-    if (messagesRef.current.length + 2 > MAX_CHAT_MESSAGES) return
+    if (!canStartChatExchange(messagesRef.current.length)) return
 
     const userMsg = { role: 'user', content: text }
     const history = [...messagesRef.current, userMsg]
