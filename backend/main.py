@@ -205,10 +205,12 @@ async def fetch_tracks(tag: str, limit: int = 6) -> list:
     except (httpx.HTTPError, ValueError) as exc:
         raise ProviderError("Last.fm request failed") from exc
 
-    tracks = payload.get("tracks", {}).get("track", [])
-    if not isinstance(tracks, list):
+    if not isinstance(payload, dict) or "error" in payload:
+        raise ProviderError("Last.fm returned an error response")
+    container = payload.get("tracks")
+    if not isinstance(container, dict) or not isinstance(container.get("track"), list):
         raise ProviderError("Last.fm returned an unexpected response")
-    return tracks
+    return container["track"]
 
 
 def _format_tracks(tracks: list) -> list[dict]:
@@ -218,19 +220,27 @@ def _format_tracks(tracks: list) -> list[dict]:
         name = track.get("name") if isinstance(track, dict) else None
         artist = track.get("artist", {}) if isinstance(track, dict) else {}
         artist_name = artist.get("name") if isinstance(artist, dict) else None
-        if name and artist_name:
+        if (
+            isinstance(name, str)
+            and name.strip()
+            and isinstance(artist_name, str)
+            and artist_name.strip()
+        ):
             raw_url = track.get("url", "")
-            parsed_url = urlparse(raw_url)
-            hostname = parsed_url.hostname or ""
-            safe_url = (
-                raw_url
-                if (
-                    parsed_url.scheme == "https"
-                    and (hostname == "last.fm" or hostname.endswith(".last.fm"))
-                )
-                else ""
+            safe_url = ""
+            if isinstance(raw_url, str):
+                try:
+                    parsed_url = urlparse(raw_url)
+                    hostname = parsed_url.hostname or ""
+                    if parsed_url.scheme == "https" and (
+                        hostname == "last.fm" or hostname.endswith(".last.fm")
+                    ):
+                        safe_url = raw_url
+                except ValueError:
+                    pass
+            formatted.append(
+                {"title": name.strip(), "artist": artist_name.strip(), "url": safe_url}
             )
-            formatted.append({"title": name, "artist": artist_name, "url": safe_url})
     return formatted
 
 
@@ -294,16 +304,21 @@ async def chat(request: ChatRequest):
         groups = []
         try:
             for tool_block in tool_blocks:
-                tracks = await fetch_tracks(tool_block.input["genre"])
+                tracks = _format_tracks(await fetch_tracks(tool_block.input["genre"]))
                 # Fall back to mood tag if the genre tag returns nothing on Last.fm.
                 mood = tool_block.input.get("mood")
                 if not tracks and mood:
-                    tracks = await fetch_tracks(mood)
-                groups.append(_format_tracks(tracks))
+                    tracks = _format_tracks(await fetch_tracks(mood))
+                groups.append(tracks)
         except ProviderError as exc:
             raise HTTPException(status_code=502, detail="Music data provider unavailable") from exc
 
         recommendations, tool_results = recommendation_results(tool_blocks, groups)
+        if not recommendations:
+            return {
+                "response": "No matching tracks found. Try another genre or mood.",
+                "recommendations": [],
+            }
 
         try:
             response = await client.messages.create(
