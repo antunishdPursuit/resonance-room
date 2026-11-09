@@ -24,7 +24,7 @@ The ten guided choices include Wind down, Dance, Acoustic, and Romantic. These f
 | Acoustic | Acousticness at least 0.80 and energy at most 0.60; this does not imply instrumental-only music |
 | Romantic | Explicit romantic mood label |
 
-Eligible tracks use the same scoring formula and weights below, with profile-specific numeric targets. A profile with no preferred genre earns no genre bonus; Acoustic also has no preferred mood. The original six profiles retain their existing targets and matching rules. Once an eligible pool is exhausted, repeat avoidance permits matching tracks to repeat rather than introducing unrelated candidates.
+Eligible tracks use the same scoring formula and weights below, with profile-specific numeric targets. A profile with no preferred genre earns no genre bonus; Acoustic also has no preferred mood. The original six profiles retain their numeric targets but no longer assume a preferred genre. Related moods receive partial credit where the profile has a mood target and its eligibility rules admit those labels; Acoustic has no mood bonus and Romantic still requires romantic tracks. Once an eligible pool is exhausted, repeat avoidance permits matching tracks to repeat rather than introducing unrelated candidates.
 
 ## Song Attributes
 
@@ -32,19 +32,23 @@ Each song stores categorical labels such as genre and mood plus numeric attribut
 
 ## Scoring
 
-The static browser scorer uses a maximum score of 9 points:
+The static browser scorer uses a maximum score of 7 points after removing the assumed genre bonus. Numeric attribute weights remain unchanged:
 
 | Feature | Maximum | Rule |
 | --- | ---: | --- |
-| Genre | 2.0 | Exact categorical match |
+| Genre | 0.0 | Guided vibes supply no genre preference, so no genre bonus is awarded |
 | Energy | 2.0 | Numeric closeness to target |
 | Acousticness | 1.5 | Numeric closeness to target |
-| Mood | 1.0 | Exact categorical match |
+| Mood | 1.0 | Full credit for an exact/compatible label, partial credit for related moods |
 | Valence | 1.0 | Numeric closeness to target |
 | Tempo | 1.0 | Normalized numeric closeness |
 | Danceability | 0.5 | Numeric closeness and light tiebreaking |
 
-Genre and energy receive the largest weights because style and intensity strongly shape the perceived vibe. Mood receives less weight because mood labels are more subjective. Danceability receives the least weight because it overlaps with energy.
+Energy receives the largest weight because intensity strongly shapes the perceived vibe. Mood receives less weight because mood labels are more subjective. Danceability receives the least weight because it overlaps with energy.
+
+Guided vibe names do not imply a genre: Energy does not mean pop, Focus does not mean lofi, and Surprise me does not mean jazz. The public static UI offers preset vibes; free-form genre and mood requests belong to the optional local AI path. Scores are relative ranking values, not enjoyment probabilities.
+
+Related-mood examples: Focus receives 0.8 mood points for chill, 0.7 for relaxed and 0.6 for peaceful. Intense and energetic receive full mutual credit. Moody receives 0.9 for melancholic and 0.7 for nostalgic. Unrelated or unknown labels receive no mood credit. Numeric energy and valence stay separate, so dark mood does not itself imply low intensity.
 
 The browser implementation maps each of the ten guided vibes to its own target labels and numeric values, using the fixed weights above. The source in `web/src/recommendations/fallbackRecommender.js` is the authority for exact current frontend values.
 
@@ -69,8 +73,7 @@ After five compatible likes, static mode summarizes the liked songs' common genr
 
 ## Limitations and Biases
 
-- Genre and mood use exact matches, so related labels receive no partial credit.
-- Strong genre weighting can suppress a close song from another genre.
+- Static mode offers fixed guided vibes rather than free-form genre preferences. Mood relationships are authored heuristics, not learned probabilities.
 - One target per numeric attribute cannot represent varied listening contexts.
 - Synthetic metadata does not come from measured audio analysis.
 - The static catalog covers a narrow range of genres and cultural contexts.

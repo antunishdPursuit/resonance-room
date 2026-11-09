@@ -1,4 +1,5 @@
 import { SONG_CATALOG } from './songCatalog.js'
+import { moodSimilarity } from './matchingRules.js'
 
 const TEMPO_RANGE = 110
 const RECOMMENDATION_COUNT = 6
@@ -19,7 +20,6 @@ export const GUIDED_VIBES = [
 const PROFILES = {
   windDown: {
     name: 'Wind Down',
-    favoriteGenre: null,
     favoriteMood: 'peaceful',
     targetEnergy: 0.25,
     targetValence: 0.6,
@@ -34,7 +34,6 @@ const PROFILES = {
   },
   dance: {
     name: 'Dance Floor',
-    favoriteGenre: null,
     favoriteMood: 'energetic',
     targetEnergy: 0.85,
     targetValence: 0.8,
@@ -49,7 +48,6 @@ const PROFILES = {
   },
   acoustic: {
     name: 'Acoustic Selection',
-    favoriteGenre: null,
     favoriteMood: null,
     targetEnergy: 0.4,
     targetValence: 0.65,
@@ -60,7 +58,6 @@ const PROFILES = {
   },
   romantic: {
     name: 'Romantic Evening',
-    favoriteGenre: null,
     favoriteMood: 'romantic',
     targetEnergy: 0.55,
     targetValence: 0.77,
@@ -71,7 +68,6 @@ const PROFILES = {
   },
   average: {
     name: 'The Average User (all targets at midpoint)',
-    favoriteGenre: 'jazz',
     favoriteMood: 'relaxed',
     targetEnergy: 0.5,
     targetValence: 0.5,
@@ -81,7 +77,6 @@ const PROFILES = {
   },
   chill: {
     name: 'Chill Lofi Student',
-    favoriteGenre: 'lofi',
     favoriteMood: 'chill',
     targetEnergy: 0.38,
     targetValence: 0.6,
@@ -91,7 +86,6 @@ const PROFILES = {
   },
   focus: {
     name: 'Focused Work',
-    favoriteGenre: 'lofi',
     favoriteMood: 'focused',
     targetEnergy: 0.36,
     targetValence: 0.56,
@@ -101,7 +95,6 @@ const PROFILES = {
   },
   energetic: {
     name: 'High-Energy Pop Fan',
-    favoriteGenre: 'pop',
     favoriteMood: 'intense',
     targetEnergy: 0.92,
     targetValence: 0.8,
@@ -111,7 +104,6 @@ const PROFILES = {
   },
   feelGood: {
     name: 'Feel-good Lift',
-    favoriteGenre: 'indie pop',
     favoriteMood: 'uplifting',
     targetEnergy: 0.76,
     targetValence: 0.9,
@@ -121,7 +113,6 @@ const PROFILES = {
   },
   moody: {
     name: 'Moody Night',
-    favoriteGenre: 'synthwave',
     favoriteMood: 'moody',
     targetEnergy: 0.58,
     targetValence: 0.38,
@@ -131,7 +122,6 @@ const PROFILES = {
   },
   rock: {
     name: 'Deep Intense Rock',
-    favoriteGenre: 'rock',
     favoriteMood: 'intense',
     targetEnergy: 0.9,
     targetValence: 0.35,
@@ -141,7 +131,6 @@ const PROFILES = {
   },
   emotional: {
     name: 'Conflicted (high energy + melancholic mood)',
-    favoriteGenre: 'metal',
     favoriteMood: 'angry',
     targetEnergy: 0.95,
     targetValence: 0.15,
@@ -259,8 +248,7 @@ function songKey(song) {
 
 function scoreSong(profile, song) {
   let score = 0
-  if (song.genre === profile.favoriteGenre) score += 2
-  if (song.mood === profile.favoriteMood) score += 1
+  score += moodSimilarity(profile.favoriteMood, song.mood)
 
   score += 2 * (1 - Math.abs(song.energy - profile.targetEnergy))
   score += 1.5 * (1 - Math.abs(song.acousticness - profile.targetAcousticness))
@@ -313,6 +301,12 @@ export function recommendFallbackSongs(
 export function createFallbackChatReply(message, options) {
   const profile = profileForMessage(message)
   const recommendations = recommendFallbackSongs(message, SONG_CATALOG, options)
+  if (!recommendations.length) {
+    return {
+      response: 'No matching songs in this catalog. Try another genre or vibe.',
+      recommendations,
+    }
+  }
   const intros = PROFILE_INTROS[profile.name] ?? DEFAULT_INTROS
   const repeatCount = Number.isInteger(options?.repeatCount) ? Math.max(1, options.repeatCount) : 1
   const intro = intros[(repeatCount - 1) % intros.length]

@@ -181,7 +181,7 @@ ESLint dependency advisory; JSX/glob behavior is covered by quality tests.
 ## Current Limits
 
 - The static catalog contains 108 synthetic records and ten preset vibes.
-- Exact genre and mood labels can outweigh otherwise similar audio attributes.
+- Static vibes do not assume a favorite genre; related mood labels use authored similarity rules that still require listening-based evaluation.
 - The catalog represents a narrow range of music and cultural contexts.
 - Static likes change response wording after five compatible selections but do not retrain the ranking formula.
 - The conversation context is limited to 20 messages.

@@ -9,14 +9,14 @@ import {
 import { SONG_CATALOG } from '../src/recommendations/songCatalog.js'
 
 test('returns six deterministic recommendations from the frontend catalog', () => {
-  const first = recommendFallbackSongs('Give me energetic pop music')
-  const second = recommendFallbackSongs('Give me energetic pop music')
+  const first = recommendFallbackSongs('Energy')
+  const second = recommendFallbackSongs('Energy')
 
   assert.equal(first.length, 6)
   assert.deepEqual(second, first)
   assert.deepEqual(
     first.slice(0, 2).map((song) => song.title),
-    ['Gym Hero', 'Bright Sprint'],
+    ['Gym Hero', 'Neon Relay'],
   )
   assert.equal(new Set(first.map((song) => song.artist)).size, first.length)
 })
@@ -40,13 +40,13 @@ test('matches the approved guided recommendation profiles', () => {
   )
 })
 
-test('preserves scoring and profile rankings when given the original catalog', () => {
+test('applies genre-neutral and related-mood scoring to the original catalog', () => {
   const original = SONG_CATALOG.slice(0, 36)
   for (const [request, expected] of [
     ['chill', ['Library Rain', 'Midnight Coding']],
     ['focus', ['Deep Work', 'Notebook Daydream']],
-    ['energy', ['Gym Hero', 'Fast Forward']],
-    ['surprise me', ['Coffee Shop Stories', 'Blue Hour Letters']],
+    ['energy', ['Gym Hero', 'Electric Sidewalk']],
+    ['surprise me', ['Paper Moons', 'Midnight Coding']],
   ]) {
     assert.deepEqual(
       recommendFallbackSongs(request, original)
