@@ -20,11 +20,10 @@ test('format selection excludes generated files, assets and the lockfile', () =>
     'web/coverage/report.html',
     'web/package-lock.json',
     'backend/main.py',
-    'src/recommender.py',
     'tests/test_api.py',
   ]
   assert.deepEqual(selectFiles(files, 'web'), files.slice(0, 2))
-  assert.deepEqual(selectFiles(files, 'python'), files.slice(-3))
+  assert.deepEqual(selectFiles(files, 'python'), files.slice(-2))
 })
 
 test('format selection handles divergent bases, commits, staged, unstaged and new files', () => {

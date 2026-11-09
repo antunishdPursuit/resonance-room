@@ -40,7 +40,7 @@ export function changedFiles(base, cwd = root) {
 }
 
 export function selectFiles(files, kind) {
-  if (kind === 'python') return files.filter((name) => /^(backend|src|tests)\/.*\.py$/.test(name))
+  if (kind === 'python') return files.filter((name) => /^(backend|tests)\/.*\.py$/.test(name))
   return files.filter(
     (name) =>
       name.startsWith('web/') &&
@@ -70,7 +70,7 @@ export function main(args = process.argv.slice(2)) {
     const python =
       process.env.QUALITY_PYTHON ??
       (process.platform === 'win32' ? path.join(root, '.venv/Scripts/python.exe') : 'python')
-    run(python, ['-m', 'ruff', 'check', 'backend', 'src', 'tests'])
+    run(python, ['-m', 'ruff', 'check', 'backend', 'tests'])
     const formatted = selectFiles(files, 'python')
     if (formatted.length) run(python, ['-m', 'ruff', 'format', '--check', '--', ...formatted])
     else console.log('Ruff format: no changed Python files')
