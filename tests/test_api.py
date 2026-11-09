@@ -18,9 +18,24 @@ def request(method: str, path: str, json: dict | None = None):
     return asyncio.run(send())
 
 
-def test_chat_uses_fallback_without_provider_keys(monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    monkeypatch.delenv("LASTFM_API_KEY", raising=False)
+@pytest.mark.parametrize(
+    ("assistant_key", "music_key"),
+    [(None, None), ("test-key", None), (None, "test-key"), (" ", "test-key")],
+)
+def test_chat_requires_both_provider_keys_without_contacting_providers(
+    monkeypatch, assistant_key, music_key
+):
+    for name, value in [("ANTHROPIC_API_KEY", assistant_key), ("LASTFM_API_KEY", music_key)]:
+        if value is None:
+            monkeypatch.delenv(name, raising=False)
+        else:
+            monkeypatch.setenv(name, value)
+
+    def unexpected_provider(*_args, **_kwargs):
+        pytest.fail("An unconfigured backend must not contact providers")
+
+    monkeypatch.setattr(api, "_anthropic_client", unexpected_provider)
+    monkeypatch.setattr(api, "fetch_tracks", unexpected_provider)
 
     response = request(
         "POST",
@@ -30,9 +45,11 @@ def test_chat_uses_fallback_without_provider_keys(monkeypatch):
         },
     )
 
-    assert response.status_code == 200
-    assert response.json()["response"]
-    assert len(response.json()["recommendations"]) == 6
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "Local AI recommendations require ANTHROPIC_API_KEY and LASTFM_API_KEY."
+    }
+    assert request("GET", "/health").json() == {"status": "ok"}
 
 
 @pytest.mark.parametrize(

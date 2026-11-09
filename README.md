@@ -40,7 +40,7 @@ Visitor
   -> optional browser speech
 ```
 
-The public static mode does not send chat or speech requests to FastAPI. The repository retains an optional local backend mode for Anthropic-assisted intent extraction, Last.fm discovery, a separate 18-song Python fallback, and ElevenLabs speech.
+The public static mode does not send chat or speech requests to FastAPI. The repository retains an optional local backend mode for Anthropic-assisted intent extraction, Last.fm discovery, and optional ElevenLabs speech. Local recommendations require both Anthropic and Last.fm keys; missing or blank keys return an HTTP 503 setup error rather than synthetic tracks.
 
 Read [How the Music Recommender Works](docs/music-recommender.md) for the scoring logic, catalog boundary, and known biases.
 
@@ -80,7 +80,6 @@ Movement does not activate while a form control is focused. Browser device emula
 - Anthropic SDK
 - Last.fm API
 - ElevenLabs API
-- Deterministic Python fallback recommender
 
 ## Run Locally
 
