@@ -9,6 +9,7 @@ from backend import main as api
 
 def request(method: str, path: str, json: dict | None = None):
     """Send a request directly to the ASGI app without Starlette's deprecated wrapper."""
+
     async def send():
         transport = ASGITransport(app=api.app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
@@ -21,9 +22,13 @@ def test_chat_uses_fallback_without_provider_keys(monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("LASTFM_API_KEY", raising=False)
 
-    response = request("POST", "/chat", json={
-        "messages": [{"role": "user", "content": "Give me energetic pop music"}],
-    })
+    response = request(
+        "POST",
+        "/chat",
+        json={
+            "messages": [{"role": "user", "content": "Give me energetic pop music"}],
+        },
+    )
 
     assert response.status_code == 200
     assert response.json()["response"]
@@ -61,6 +66,7 @@ def test_chat_returns_safe_error_when_lastfm_fails(monkeypatch):
                     SimpleNamespace(
                         type="tool_use",
                         id="tool-1",
+                        name="get_recommendations",
                         input={"genre": "jazz"},
                     ),
                 ],
@@ -78,9 +84,13 @@ def test_chat_returns_safe_error_when_lastfm_fails(monkeypatch):
     )
     monkeypatch.setattr(api, "fetch_tracks", fail_fetch_tracks)
 
-    response = request("POST", "/chat", json={
-        "messages": [{"role": "user", "content": "Recommend jazz music"}],
-    })
+    response = request(
+        "POST",
+        "/chat",
+        json={
+            "messages": [{"role": "user", "content": "Recommend jazz music"}],
+        },
+    )
 
     assert response.status_code == 502
     assert response.json()["detail"] == "Music data provider unavailable"
@@ -100,9 +110,13 @@ def test_chat_awaits_async_anthropic_client(monkeypatch):
     monkeypatch.setenv("LASTFM_API_KEY", "test-key")
     monkeypatch.setattr(api, "_anthropic_client", lambda: fake_client)
 
-    response = request("POST", "/chat", json={
-        "messages": [{"role": "user", "content": "Hello Riri"}],
-    })
+    response = request(
+        "POST",
+        "/chat",
+        json={
+            "messages": [{"role": "user", "content": "Hello Riri"}],
+        },
+    )
 
     assert response.status_code == 200
     assert response.json() == {
