@@ -1,9 +1,10 @@
 import * as THREE from 'three'
 import { CAMPUS_ENVIRONMENT_PALETTE as palette } from './classroomCampusEnvironment.js'
 import { createClassroomStreetNetwork } from './classroomStreetNetwork.js'
+import { createClassroomHallwayDetails } from './classroomHallwayDetails.js'
 
 // Extend the retained campus without changing its walkable area or camera enclosure.
-export function completeClassroomCampusViews(campus) {
+export function completeClassroomCampusViews(campus, { boardBottom = 0.9845305, frontWallZ } = {}) {
   const object3d = new THREE.Group()
   object3d.name = 'Classroom windows and courtyard returns'
   object3d.userData.playable = false
@@ -38,14 +39,24 @@ export function completeClassroomCampusViews(campus) {
     // Retain the original full wall as the camera boundary, while rendering real openings.
     oldWall.visible = false
     const start = room.door.centerZ + room.door.width / 2
-    const end = room.frontZ
+    const end = frontWallZ ?? room.frontZ
     const length = end - start
-    const count = Math.max(1, Math.floor(length / 2.2))
-    const bay = length / count
-    const width = bay * 0.72
-    const bottom = room.floorY + 1.35
-    const top = Math.min(room.floorY + 2.4, room.ceilingY - 0.18)
+    // The retained classroom fits three bays with 0.65m outer-frame returns;
+    // smaller supplied bounds must still produce positive, contained geometry.
+    const margin = Math.min(0.69, length * 0.15)
+    const pier = Math.min(0.55, length * 0.1)
+    const count = Math.min(3, Math.max(1, Math.floor((length - 2 * margin + pier) / 1.35)))
+    const width = (length - 2 * margin - (count - 1) * pier) / count
+    const bottom = boardBottom + 0.035
+    const top = bottom + 1.05
     const middle = (bottom + top) / 2
+    if (end < room.frontZ)
+      box(
+        'Corridor front corner return',
+        [room.wallThickness, room.height, room.frontZ - end],
+        [room.leftX, room.floorY + room.height / 2, (end + room.frontZ) / 2],
+        wall,
+      )
     box(
       'Corridor window lower wall',
       [room.wallThickness, bottom - room.floorY, length],
@@ -59,9 +70,13 @@ export function completeClassroomCampusViews(campus) {
       wall,
     )
     for (let i = 0; i <= count; i++) {
-      const pierWidth = (bay - width) * (i === 0 || i === count ? 0.5 : 1)
+      const pierWidth = i === 0 || i === count ? margin : pier
       const z =
-        i === 0 ? start + pierWidth / 2 : i === count ? end - pierWidth / 2 : start + i * bay
+        i === 0
+          ? start + margin / 2
+          : i === count
+            ? end - margin / 2
+            : start + margin + i * width + (i - 0.5) * pier
       box(
         `Corridor window pier ${i}`,
         [room.wallThickness, top - bottom, pierWidth],
@@ -70,7 +85,7 @@ export function completeClassroomCampusViews(campus) {
       )
     }
     for (let i = 0; i < count; i++) {
-      const z = start + bay * (i + 0.5)
+      const z = start + margin + width / 2 + i * (width + pier)
       box(
         `Corridor window glass ${i}`,
         [0.025, top - bottom, width],
@@ -97,6 +112,8 @@ export function completeClassroomCampusViews(campus) {
   }
 
   const streets = createClassroomStreetNetwork(campus)
+  const hallway = createClassroomHallwayDetails(campus)
+  object3d.add(hallway.object3d)
   campus.object3d.add(object3d)
   campus.object3d.updateMatrixWorld(true)
 
@@ -104,6 +121,7 @@ export function completeClassroomCampusViews(campus) {
     object3d,
     dispose() {
       streets.dispose()
+      hallway.dispose()
       object3d.removeFromParent()
       if (oldWall) oldWall.visible = originalVisibility
       if (ground) ground.scale.copy(originalGroundScale)

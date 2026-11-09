@@ -4,6 +4,8 @@ import * as THREE from 'three'
 import { classroomFixture } from './classroomSourceFixture.mjs'
 import { applyClassroomLayout } from '../src/classroom/classroomLayout.js'
 import { createClassroomMovementEnvironment } from '../src/classroom/classroomMovementEnvironment.js'
+import { createClassroomCampusEnvironment } from '../src/classroom/classroomCampusEnvironment.js'
+import { completeClassroomCampusViews } from '../src/classroom/classroomCampusViews.js'
 import { createAvatarMovementController } from '../src/classroom/avatarMovementController.js'
 
 test('fresh source expands around sixteen unchanged desk/chair units and restores all source assets', () => {
@@ -89,4 +91,53 @@ test('actual movement controller walks both side aisles, rear entrance and front
     globalThis.window = previousWindow
     layout.dispose()
   }
+})
+
+test('three balanced windows align outer bottoms with the board and closed door reveals are backed', () => {
+  const { root, parser } = classroomFixture()
+  const layout = applyClassroomLayout(root, parser)
+  const environment = createClassroomMovementEnvironment({ classroomRoot: root, parser })
+  const campus = createClassroomCampusEnvironment({ roomBounds: environment.walkableBounds })
+  const views = completeClassroomCampusViews(campus, layout)
+  const panes = views.object3d.children.filter((mesh) =>
+    mesh.name.startsWith('Corridor window glass'),
+  )
+  assert.equal(panes.length, 3)
+  for (const pane of panes)
+    assert.ok(
+      Math.abs(new THREE.Box3().setFromObject(pane).min.y - 0.035 - layout.boardBottom) < 0.00001,
+    )
+  const room = campus.placement.classroom
+  const openingEnd = room.door.centerZ + room.door.width / 2
+  assert.ok(
+    Math.abs(panes[0].position.z - panes[0].scale.z / 2 - 0.04 - openingEnd - 0.65) < 0.00001,
+  )
+  assert.ok(
+    Math.abs(layout.frontWallZ - panes[2].position.z - panes[2].scale.z / 2 - 0.04 - 0.65) <
+      0.00001,
+  )
+  const door = campus.object3d.getObjectByName('Closed hallway door')
+  assert.ok(
+    Math.abs(
+      new THREE.Box3().setFromObject(door).getSize(new THREE.Vector3()).z -
+        (room.door.width - 0.012),
+    ) < 0.00001,
+  )
+  for (const direction of [-1, 1]) {
+    const ray = new THREE.Raycaster(
+      new THREE.Vector3(
+        room.leftX + 1,
+        1.2,
+        room.door.centerZ + direction * (room.door.width / 2 - 0.003),
+      ),
+      new THREE.Vector3(-1, 0, 0),
+    )
+    assert.ok(
+      ray.intersectObject(views.object3d.getObjectByName('Hallway trim')).length,
+      'Door seam has no backing',
+    )
+  }
+  views.dispose()
+  campus.dispose()
+  layout.dispose()
 })

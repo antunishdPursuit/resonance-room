@@ -5,6 +5,28 @@ import { createClassroomCampusEnvironment } from '../src/classroom/classroomCamp
 import { completeClassroomCampusViews } from '../src/classroom/classroomCampusViews.js'
 import { resolveCameraPosition } from '../src/classroom/avatarMovementController.js'
 
+test('short room bounds retain positive contained window geometry', () => {
+  const campus = createClassroomCampusEnvironment({
+    roomBounds: new THREE.Box3(new THREE.Vector3(-4, -0.3, -2), new THREE.Vector3(4.76, 3.24, 2)),
+  })
+  const views = completeClassroomCampusViews(campus)
+  const panes = views.object3d.children.filter((mesh) =>
+    mesh.name.startsWith('Corridor window glass'),
+  )
+  assert.equal(panes.length, 1)
+  const room = campus.placement.classroom
+  for (const mesh of views.object3d.children.filter((mesh) =>
+    mesh.name.startsWith('Corridor window'),
+  )) {
+    assert.ok(mesh.scale.x > 0 && mesh.scale.y > 0 && mesh.scale.z > 0)
+    const bounds = new THREE.Box3().setFromObject(mesh)
+    assert.ok(bounds.min.z >= room.door.centerZ + room.door.width / 2 - 0.000001)
+    assert.ok(bounds.max.z <= room.frontZ + 0.000001)
+  }
+  views.dispose()
+  campus.dispose()
+})
+
 test('corridor windows have real openings above furniture while retaining camera containment', () => {
   const campus = createClassroomCampusEnvironment({
     roomBounds: new THREE.Box3(new THREE.Vector3(-4, -0.3, -5), new THREE.Vector3(4.76, 3.24, 5)),
@@ -14,11 +36,11 @@ test('corridor windows have real openings above furniture while retaining camera
   const panes = views.object3d.children.filter((mesh) =>
     mesh.name.startsWith('Corridor window glass'),
   )
-  assert.ok(panes.length >= 2)
+  assert.equal(panes.length, 3)
   for (const pane of panes) {
     const box = new THREE.Box3().setFromObject(pane)
-    assert.ok(Math.abs(box.min.y - 1.35) < 0.00001)
-    assert.ok(Math.abs(box.max.y - 2.4) < 0.00001)
+    assert.ok(Math.abs(box.min.y - 1.0195305) < 0.00001)
+    assert.ok(Math.abs(box.max.y - 2.0695305) < 0.00001)
     assert.ok(
       box.min.z >
         campus.placement.classroom.door.centerZ + campus.placement.classroom.door.width / 2,
