@@ -24,7 +24,7 @@ test('mixed-input controls retain touch, keyboard and mouse instructions', async
     assert.match(markup, /hold Shift/)
     assert.match(markup, /Use the mouse wheel/)
     assert.match(markup, /right side on touch/)
-    assert.match(markup, /built-in 100-song catalog/)
+    assert.match(markup, /built-in 108-song catalog/)
   } finally {
     await server.close()
   }
@@ -55,7 +55,7 @@ for (const mode of ['static', 'backend']) {
         assert.match(about, /Tell Riri what you like/)
         assert.doesNotMatch(about, /This public demo uses/)
       } else {
-        assert.match(about, /built-in catalog of 100 songs/)
+        assert.match(about, /built-in catalog of 108 songs/)
         assert.match(about, /Choose a vibe/)
         assert.match(about, /does not connect to Claude/)
       }

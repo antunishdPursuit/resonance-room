@@ -1,21 +1,28 @@
 @font-face {
-  font-family: "Inter";
+  font-family: 'Inter';
   font-style: normal;
   font-weight: 400 600;
   font-display: swap;
-  src: url("/fonts/inter-latin-400-600.woff2") format("woff2");
+  src: url('/fonts/inter-latin-400-600.woff2') format('woff2');
 }
 
 @font-face {
-  font-family: "Space Grotesk";
+  font-family: 'Space Grotesk';
   font-style: normal;
   font-weight: 600 700;
   font-display: swap;
-  src: url("/fonts/space-grotesk-latin-600-700.woff2") format("woff2");
+  src: url('/fonts/space-grotesk-latin-600-700.woff2') format('woff2');
 }
 
 :root {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   color: #fff8fc;
   background:
     radial-gradient(circle at top, rgba(255, 121, 184, 0.12), transparent 34%),
@@ -100,7 +107,7 @@ summary:focus-visible {
   transition: opacity 600ms ease;
 }
 
-.loading-screen[data-fading="true"] {
+.loading-screen[data-fading='true'] {
   opacity: 0;
   pointer-events: none;
 }
@@ -125,7 +132,7 @@ summary:focus-visible {
 .classroom-inspector__disclosure > summary,
 .classroom-inspector__section-heading,
 .movement-debug strong {
-  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
 }
 
 .loading-screen__title {
@@ -148,20 +155,17 @@ summary:focus-visible {
   width: 100dvw;
   height: 100dvh;
   min-height: 100dvh;
-  padding:
-    max(20px, env(safe-area-inset-top))
-    max(20px, env(safe-area-inset-right))
-    max(20px, env(safe-area-inset-bottom))
-    max(20px, env(safe-area-inset-left));
+  padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
+    max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
 }
 
 .experience-entry__layout {
   display: grid;
   grid-template-columns: minmax(220px, 0.8fr) minmax(360px, 1.4fr);
   grid-template-areas:
-    "heading controls"
-    "demo controls"
-    "ready controls";
+    'heading controls'
+    'demo controls'
+    'ready controls';
   width: min(920px, 100%);
   gap: 20px 28px;
   align-items: center;
@@ -207,7 +211,7 @@ summary:focus-visible {
 
 .experience-entry__control strong {
   color: var(--riri-text);
-  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
   font-size: 0.875rem;
   line-height: 1.35;
 }
@@ -244,7 +248,7 @@ summary:focus-visible {
 
 .experience-entry__demo strong {
   color: var(--riri-info);
-  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -256,7 +260,7 @@ summary:focus-visible {
   justify-self: start;
 }
 
-.experience-entry__ready[data-ready="true"] {
+.experience-entry__ready[data-ready='true'] {
   border-color: var(--riri-blush) !important;
   box-shadow:
     0 0 0 2px rgba(255, 213, 232, 0.32),
@@ -334,7 +338,7 @@ summary:focus-visible {
 .mobile-joystick::before,
 .mobile-joystick::after {
   position: absolute;
-  content: "";
+  content: '';
   background: rgba(255, 213, 232, 0.18);
 }
 
@@ -360,7 +364,7 @@ summary:focus-visible {
   will-change: transform;
 }
 
-.mobile-joystick[data-running="true"] {
+.mobile-joystick[data-running='true'] {
   border-width: 3px;
   border-color: var(--riri-blush);
   box-shadow:
@@ -368,7 +372,7 @@ summary:focus-visible {
     var(--riri-shadow);
 }
 
-.mobile-joystick[data-running="true"] .mobile-joystick__knob {
+.mobile-joystick[data-running='true'] .mobile-joystick__knob {
   box-shadow:
     0 0 0 3px rgba(255, 213, 232, 0.28),
     0 0 24px rgba(255, 121, 184, 0.64);
@@ -413,7 +417,7 @@ summary:focus-visible {
   overflow-y: auto;
 }
 
-.liked-panel[data-open="false"] {
+.liked-panel[data-open='false'] {
   display: none;
 }
 
@@ -498,7 +502,10 @@ summary:focus-visible {
   border: 0;
   background: transparent;
   cursor: pointer;
-  transition: color var(--riri-transition), transform var(--riri-transition), opacity var(--riri-transition);
+  transition:
+    color var(--riri-transition),
+    transform var(--riri-transition),
+    opacity var(--riri-transition);
 }
 
 .icon-button {
@@ -537,7 +544,7 @@ summary:focus-visible {
   overflow: auto;
 }
 
-.riri-response[data-visible="true"] {
+.riri-response[data-visible='true'] {
   opacity: 1;
   animation: riri-response-float 3.2s ease-in-out infinite;
 }
@@ -548,7 +555,7 @@ summary:focus-visible {
   left: var(--speech-bubble-tail-x, 50%);
   width: 14px;
   height: 14px;
-  content: "";
+  content: '';
   background: var(--riri-surface);
   border-right: 1px solid var(--riri-border);
   border-bottom: 1px solid var(--riri-border);
@@ -581,7 +588,7 @@ summary:focus-visible {
   overflow-y: auto;
 }
 
-.transcript[data-open="false"] {
+.transcript[data-open='false'] {
   display: none;
 }
 
@@ -670,7 +677,7 @@ summary:focus-visible {
   line-height: 1;
 }
 
-.transcript-song__toggle[data-selected="true"] {
+.transcript-song__toggle[data-selected='true'] {
   color: var(--riri-pink) !important;
 }
 
@@ -693,7 +700,7 @@ summary:focus-visible {
   transform: translateX(-50%);
 }
 
-.chat-limit-notice[data-tone="warning"] {
+.chat-limit-notice[data-tone='warning'] {
   color: var(--riri-warning);
   border-color: rgba(255, 208, 138, 0.5) !important;
   background: rgba(42, 26, 20, 0.92) !important;
@@ -721,7 +728,7 @@ summary:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
 }
 
 .controls-menu__guide {
@@ -767,7 +774,7 @@ summary:focus-visible {
 .controls-menu__camera legend {
   padding: 0;
   color: var(--riri-text);
-  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
   font-size: 0.875rem;
   font-weight: 600;
 }
@@ -830,7 +837,7 @@ summary:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
 }
 
 .mobile-utility-menu__actions {
@@ -890,6 +897,9 @@ summary:focus-visible {
   grid-template-columns: repeat(3, minmax(92px, 1fr));
   width: min(420px, calc(100vw - 28px));
   gap: 8px;
+  max-height: calc(100dvh - 120px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 10px;
   background: var(--riri-surface);
   border: 1px solid var(--riri-border);
@@ -902,6 +912,10 @@ summary:focus-visible {
 .button--vibe {
   min-height: 42px;
   padding-inline: 12px;
+}
+
+.riri-app[data-touch-controls='true'][data-phone='false'] .vibe-tray {
+  bottom: calc(clamp(88px, 25dvh, 112px) + 10px);
 }
 
 .voice-reminder {
@@ -927,7 +941,7 @@ summary:focus-visible {
 }
 
 .voice-reminder strong {
-  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
 }
 
 .voice-reminder span {
@@ -1302,25 +1316,25 @@ summary:focus-visible {
   }
 }
 
-.riri-app[data-phone="true"] {
+.riri-app[data-phone='true'] {
   width: 100dvw;
   height: 100dvh;
 }
 
-.riri-app[data-phone="true"] .riri-canvas {
+.riri-app[data-phone='true'] .riri-canvas {
   width: 100dvw;
   height: 100dvh;
   touch-action: none;
 }
 
-.riri-app[data-phone-landscape="true"] {
+.riri-app[data-phone-landscape='true'] {
   --mobile-actions-height: 58px;
 }
 
-.riri-app[data-phone-landscape="true"] .liked-panel,
-.riri-app[data-phone-landscape="true"] .transcript,
-.riri-app[data-phone-landscape="true"] .controls-menu,
-.riri-app[data-phone-landscape="true"] .mobile-utility-menu {
+.riri-app[data-phone-landscape='true'] .liked-panel,
+.riri-app[data-phone-landscape='true'] .transcript,
+.riri-app[data-phone-landscape='true'] .controls-menu,
+.riri-app[data-phone-landscape='true'] .mobile-utility-menu {
   top: max(8px, env(safe-area-inset-top)) !important;
   right: max(8px, env(safe-area-inset-right)) !important;
   bottom: auto !important;
@@ -1331,7 +1345,7 @@ summary:focus-visible {
   background: rgba(24, 15, 24, 0.94);
 }
 
-.riri-app[data-phone-landscape="true"] .liked-panel {
+.riri-app[data-phone-landscape='true'] .liked-panel {
   z-index: 19;
   padding: 10px;
   background: var(--riri-surface);
@@ -1341,7 +1355,7 @@ summary:focus-visible {
   backdrop-filter: blur(14px);
 }
 
-.riri-app[data-phone-landscape="true"] .liked-panel .panel-heading {
+.riri-app[data-phone-landscape='true'] .liked-panel .panel-heading {
   padding: 0 !important;
   background: transparent !important;
   border: 0 !important;
@@ -1349,32 +1363,32 @@ summary:focus-visible {
   backdrop-filter: none !important;
 }
 
-.riri-app[data-phone-landscape="true"] .experience-entry__layout {
+.riri-app[data-phone-landscape='true'] .experience-entry__layout {
   grid-template-columns: minmax(140px, 0.8fr) minmax(250px, 1.5fr) minmax(100px, 0.55fr);
   grid-template-areas:
-    "heading controls ready"
-    "demo controls ready";
+    'heading controls ready'
+    'demo controls ready';
   gap: 10px 14px;
 }
 
-.riri-app[data-phone-landscape="true"] .experience-entry__heading .loading-screen__title {
+.riri-app[data-phone-landscape='true'] .experience-entry__heading .loading-screen__title {
   font-size: clamp(1.25rem, 3.8vw, 2rem);
 }
 
-.riri-app[data-phone-landscape="true"] .experience-entry__control {
+.riri-app[data-phone-landscape='true'] .experience-entry__control {
   min-height: 62px;
   padding-block: 7px;
 }
 
-.riri-app[data-phone-landscape="true"] .experience-entry__demo {
+.riri-app[data-phone-landscape='true'] .experience-entry__demo {
   font-size: 0.65rem;
 }
 
-.riri-app[data-phone-landscape="true"] .experience-entry__ready {
+.riri-app[data-phone-landscape='true'] .experience-entry__ready {
   justify-self: center;
 }
 
-.riri-app[data-phone-landscape="true"] .gameplay-actions {
+.riri-app[data-phone-landscape='true'] .gameplay-actions {
   right: auto;
   bottom: max(8px, env(safe-area-inset-bottom)) !important;
   left: 50%;
@@ -1386,33 +1400,33 @@ summary:focus-visible {
   transform: translateX(-50%);
 }
 
-.riri-app[data-phone-landscape="true"] .gameplay-actions .button {
+.riri-app[data-phone-landscape='true'] .gameplay-actions .button {
   min-height: 44px;
   padding: 8px 10px;
   font-size: 0.875rem;
 }
 
-.riri-app[data-phone-landscape="true"] .vibe-control__trigger {
+.riri-app[data-phone-landscape='true'] .vibe-control__trigger {
   min-width: 148px;
 }
 
-.riri-app[data-phone-landscape="true"] .gameplay-actions__utilities {
+.riri-app[data-phone-landscape='true'] .gameplay-actions__utilities {
   gap: 4px;
 }
 
-.riri-app[data-phone-landscape="true"] .vibe-tray {
+.riri-app[data-phone-landscape='true'] .vibe-tray {
   left: 0;
   grid-template-columns: repeat(3, minmax(76px, 1fr));
   width: min(420px, calc(100dvw - 154px));
   transform: none;
 }
 
-.riri-app[data-phone-landscape="true"] .chat-limit-notice {
+.riri-app[data-phone-landscape='true'] .chat-limit-notice {
   bottom: calc(var(--mobile-actions-height) + max(8px, env(safe-area-inset-bottom)));
   max-width: calc(100dvw - 154px);
 }
 
-.riri-app[data-phone-landscape="true"] .voice-reminder {
+.riri-app[data-phone-landscape='true'] .voice-reminder {
   right: max(8px, env(safe-area-inset-right));
   bottom: calc(var(--mobile-actions-height) + max(14px, env(safe-area-inset-bottom)));
   width: min(360px, calc(100dvw - 154px));
@@ -1422,10 +1436,10 @@ summary:focus-visible {
   .experience-entry__layout {
     grid-template-columns: 1fr;
     grid-template-areas:
-      "heading"
-      "controls"
-      "demo"
-      "ready";
+      'heading'
+      'controls'
+      'demo'
+      'ready';
     max-height: 100dvh;
     overflow-y: auto;
   }
@@ -1433,9 +1447,7 @@ summary:focus-visible {
 
 @media (orientation: landscape) and (max-height: 360px) {
   .loading-screen--experience {
-    padding-block:
-      max(8px, env(safe-area-inset-top))
-      max(8px, env(safe-area-inset-bottom));
+    padding-block: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-bottom));
   }
 
   .experience-entry__layout {
@@ -1447,11 +1459,11 @@ summary:focus-visible {
     padding-block: 6px;
   }
 
-  .riri-app[data-phone-landscape="true"] {
+  .riri-app[data-phone-landscape='true'] {
     --mobile-actions-height: 54px;
   }
 
-  .riri-app[data-phone-landscape="true"] .gameplay-actions .button {
+  .riri-app[data-phone-landscape='true'] .gameplay-actions .button {
     min-height: 42px;
     padding-block: 6px;
   }
@@ -1467,7 +1479,7 @@ summary:focus-visible {
     transition-duration: 0.01ms !important;
   }
 
-  .experience-entry__ready[data-ready="true"] {
+  .experience-entry__ready[data-ready='true'] {
     animation: none;
   }
 }

@@ -60,11 +60,47 @@ test('preserves scoring and profile rankings when given the original catalog', (
 test('preserves the guided choices and static catalog boundary', () => {
   assert.deepEqual(
     GUIDED_VIBES.map((vibe) => vibe.label),
-    ['Chill', 'Focus', 'Energy', 'Feel-good', 'Moody', 'Surprise me'],
+    [
+      'Chill',
+      'Focus',
+      'Energy',
+      'Feel-good',
+      'Moody',
+      'Wind down',
+      'Dance',
+      'Acoustic',
+      'Romantic',
+      'Surprise me',
+    ],
   )
-  assert.equal(SONG_CATALOG.length, 100)
+  assert.equal(SONG_CATALOG.length, 108)
   assert.equal(SONG_CATALOG[0].title, 'Sunrise City')
   assert.equal(SONG_CATALOG[35].title, 'Last Train Home')
+})
+
+test('new guided labels reach distinct profiles and cycle through their own responses', () => {
+  for (const [label, request, intro] of [
+    ['Wind down', 'wind-down', /slow things down/],
+    ['Dance', 'dance', /rhythm-led/],
+    ['Acoustic', 'acoustic', /acoustic sound/],
+    ['Romantic', 'romantic', /romantic mood/],
+  ]) {
+    const first = createFallbackChatReply(label)
+    assert.deepEqual(first.recommendations, recommendFallbackSongs(request))
+    assert.match(first.response, intro)
+    assert.notEqual(first.response, createFallbackChatReply(label, { repeatCount: 2 }).response)
+  }
+})
+
+test('an exhausted Romantic pool repeats eligible songs rather than introducing another mood', () => {
+  const first = recommendFallbackSongs('romantic')
+  const second = recommendFallbackSongs('romantic', SONG_CATALOG, { excludeSongs: first })
+  const third = recommendFallbackSongs('romantic', SONG_CATALOG, {
+    excludeSongs: [...first, ...second],
+  })
+  assert.equal(third.length, 6)
+  assert.ok(third.every((song) => song.mood === 'romantic'))
+  assert.deepEqual(third, first)
 })
 
 test('avoids songs from the previous set while alternatives remain', () => {

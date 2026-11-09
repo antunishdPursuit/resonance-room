@@ -4,7 +4,17 @@ import test from 'node:test'
 import { SONG_CATALOG } from '../src/recommendations/songCatalog.js'
 import { GUIDED_VIBES, recommendFallbackSongs } from '../src/recommendations/fallbackRecommender.js'
 
+const newVibes = new Set(['wind-down', 'dance', 'acoustic', 'romantic'])
 const coverage = {
+  'wind-down': (song) =>
+    song.energy <= 0.35 &&
+    song.tempoBpm <= 80 &&
+    song.acousticness >= 0.8 &&
+    ['peaceful', 'chill', 'relaxed'].includes(song.mood),
+  dance: (song) =>
+    song.danceability >= 0.8 && song.energy >= 0.7 && song.tempoBpm >= 110 && song.tempoBpm <= 145,
+  acoustic: (song) => song.acousticness >= 0.8 && song.energy <= 0.6,
+  romantic: (song) => song.mood === 'romantic',
   chill: (song) =>
     ['chill', 'peaceful', 'relaxed', 'focused'].includes(song.mood) &&
     song.energy <= 0.5 &&
@@ -22,12 +32,12 @@ const coverage = {
     song.energy >= 0.25 && song.energy <= 0.7 && song.valence >= 0.35 && song.acousticness >= 0.35,
 }
 
-test('contains 100 complete synthetic records with unique identities and valid attributes', () => {
-  assert.equal(SONG_CATALOG.length, 100)
-  assert.equal(new Set(SONG_CATALOG.map((song) => song.id)).size, 100)
+test('contains 108 complete synthetic records with unique identities and valid attributes', () => {
+  assert.equal(SONG_CATALOG.length, 108)
+  assert.equal(new Set(SONG_CATALOG.map((song) => song.id)).size, 108)
   assert.equal(
     new Set(SONG_CATALOG.map((song) => `${song.title}|${song.artist}`.toLowerCase())).size,
-    100,
+    108,
   )
   for (const song of SONG_CATALOG) {
     assert.ok(Number.isInteger(song.id) && song.id > 0)
@@ -47,15 +57,19 @@ test('contains 100 complete synthetic records with unique identities and valid a
 })
 
 for (const vibe of GUIDED_VIBES) {
-  test(`${vibe.label} has broad suitable coverage and three fresh recommendation batches`, () => {
+  test(`${vibe.label} has broad suitable coverage and fresh recommendation batches`, () => {
     const suitable = SONG_CATALOG.filter(coverage[vibe.id])
-    assert.ok(suitable.length >= 16, `${vibe.label}: only ${suitable.length} suitable candidates`)
+    assert.ok(
+      suitable.length >= (newVibes.has(vibe.id) ? 12 : 16),
+      `${vibe.label}: only ${suitable.length} suitable candidates`,
+    )
     assert.ok(new Set(suitable.map((song) => song.genre)).size >= 3)
     assert.ok(new Set(suitable.map((song) => song.artist)).size >= 12)
 
+    const batches = newVibes.has(vibe.id) ? 2 : 3
     const history = []
     const seen = new Set()
-    for (let batch = 0; batch < 3; batch += 1) {
+    for (let batch = 0; batch < batches; batch += 1) {
       const selected = recommendFallbackSongs(vibe.request, SONG_CATALOG, { excludeSongs: history })
       assert.equal(selected.length, 6)
       assert.equal(new Set(selected.map((song) => song.artist)).size, 6)
@@ -67,7 +81,7 @@ for (const vibe of GUIDED_VIBES) {
             (candidate) => candidate.title === song.title && candidate.artist === song.artist,
           ),
         )
-        if (batch === 0) {
+        if (batch === 0 || newVibes.has(vibe.id)) {
           const source = SONG_CATALOG.find(
             (candidate) => candidate.title === song.title && candidate.artist === song.artist,
           )
@@ -77,6 +91,6 @@ for (const vibe of GUIDED_VIBES) {
       }
       history.push(...selected)
     }
-    assert.equal(seen.size, 18)
+    assert.equal(seen.size, batches * 6)
   })
 }

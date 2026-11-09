@@ -101,6 +101,14 @@ const rows = [
   [98, 'Quiet Spark', 'Opal Ribbon', 'r&b', 'romantic', 0.59, 102, 0.69, 0.73, 0.41],
   [99, 'Winding Road', 'Paper Trail', 'folk', 'nostalgic', 0.4, 88, 0.57, 0.47, 0.87],
   [100, 'Pocket Waltz', 'Ivory Finch', 'classical', 'peaceful', 0.35, 94, 0.64, 0.38, 0.97],
+  [101, 'Velvet Letter', 'Rosewood Duo', 'soul', 'romantic', 0.53, 92, 0.75, 0.64, 0.61],
+  [102, 'Soft Promise', 'Pearl Avenue', 'r&b', 'romantic', 0.59, 98, 0.79, 0.73, 0.43],
+  [103, 'Candle Waltz', 'Juniper Trio', 'jazz', 'romantic', 0.46, 88, 0.72, 0.58, 0.76],
+  [104, 'Two Tickets', 'Silk Orchard', 'soul', 'romantic', 0.57, 96, 0.77, 0.69, 0.55],
+  [105, 'Evening Bloom', 'Petal Coast', 'dream pop', 'romantic', 0.52, 94, 0.74, 0.62, 0.58],
+  [106, 'Close to Home', 'Hazel Strings', 'acoustic', 'romantic', 0.45, 86, 0.78, 0.54, 0.87],
+  [107, 'Satin Ribbon', 'Opaline Hour', 'r&b', 'romantic', 0.61, 102, 0.81, 0.76, 0.38],
+  [108, 'Lantern Duet', 'Honey Vale', 'jazz', 'romantic', 0.5, 90, 0.76, 0.6, 0.71],
 ]
 
 export const SONG_CATALOG = rows.map(

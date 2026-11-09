@@ -1,19 +1,30 @@
 # How the Music Recommender Works
 
-The public static demo uses deterministic content-based scoring over 100 synthetic songs. The optional local AI backend uses Claude and Last.fm to discover real tracks. These are separate recommendation paths.
+The public static demo uses deterministic content-based scoring over 108 synthetic songs. The optional local AI backend uses Claude and Last.fm to discover real tracks. These are separate recommendation paths.
 
 ## Two Recommendation Paths
 
 | Path | Source | Selection |
 | --- | --- | --- |
-| Public static frontend | 100 synthetic records in `web/src/recommendations/songCatalog.js` | Fixed weighted scoring, repeat avoidance, and artist variety |
+| Public static frontend | 108 synthetic records in `web/src/recommendations/songCatalog.js` | Fixed weighted scoring, repeat avoidance, and artist variety |
 | Optional local AI backend | Real tracks from Last.fm, requested through Claude tool calls | Genre-tag lookup; mood-tag lookup only when genre results are empty; up to six unique results |
 
 The local AI backend requires both `ANTHROPIC_API_KEY` and `LASTFM_API_KEY`. Missing or blank keys produce HTTP 503 with a setup message. It does not silently substitute synthetic songs. Static mode does not call the backend or require provider keys.
 
 The scoring below describes only the public static catalog. Live Last.fm results do not carry equivalent numeric audio attributes and do not use this formula.
 
-The 100-record static catalog includes calm/focused, high-energy, uplifting, darker-mood, and moderate discovery examples across multiple genres. Songs can suit more than one vibe. Catalog coverage does not change the fixed scoring rules or establish real-world listening quality.
+The 108-record static catalog includes calm/focused, high-energy, uplifting, darker-mood, and moderate discovery examples across multiple genres. Songs can suit more than one vibe. Catalog coverage does not change the fixed scoring rules or establish real-world listening quality.
+
+The ten guided choices include Wind down, Dance, Acoustic, and Romantic. These four profiles apply eligibility rules before ranking, with no implicit genre preference:
+
+| Profile | Eligible tracks |
+| --- | --- |
+| Wind down | Energy at most 0.35, tempo at most 80 BPM, acousticness at least 0.80, and peaceful/chill/relaxed mood |
+| Dance | Danceability at least 0.80, energy at least 0.70, and tempo from 110 to 145 BPM |
+| Acoustic | Acousticness at least 0.80 and energy at most 0.60; this does not imply instrumental-only music |
+| Romantic | Explicit romantic mood label |
+
+Eligible tracks use the same scoring formula and weights below, with profile-specific numeric targets. A profile with no preferred genre earns no genre bonus; Acoustic also has no preferred mood. The original six profiles retain their existing targets and matching rules. Once an eligible pool is exhausted, repeat avoidance permits matching tracks to repeat rather than introducing unrelated candidates.
 
 ## Song Attributes
 
@@ -35,16 +46,16 @@ The static browser scorer uses a maximum score of 9 points:
 
 Genre and energy receive the largest weights because style and intensity strongly shape the perceived vibe. Mood receives less weight because mood labels are more subjective. Danceability receives the least weight because it overlaps with energy.
 
-The browser implementation maps each of the six guided vibes to its own target labels and numeric values, using the fixed weights above. The source in `web/src/recommendations/fallbackRecommender.js` is the authority for exact current frontend values.
+The browser implementation maps each of the ten guided vibes to its own target labels and numeric values, using the fixed weights above. The source in `web/src/recommendations/fallbackRecommender.js` is the authority for exact current frontend values.
 
 ## Selection Flow
 
 1. Map the selected static vibe to a target profile.
-2. Score every song against that profile.
-3. Sort the songs from highest to lowest score.
-4. Prefer distinct artists when enough artists are available.
-5. Avoid songs already shown in the current session when at least six unused suitable records remain.
-6. Return six songs.
+2. For the four new profiles, filter the catalog to eligible songs; the original six use the full catalog.
+3. Score eligible songs against the profile and sort from highest to lowest score.
+4. Prefer unused eligible songs; allow previous recommendations back when fewer than six unused candidates remain.
+5. Prefer distinct artists when enough eligible artists are available.
+6. Return up to six songs; all ten profiles have enough eligible tracks to fill a six-song batch in the bundled catalog.
 
 After five compatible likes, static mode summarizes the liked songs' common genre and mood plus average energy, danceability, and acousticness. The summary changes the character's response wording. It does not currently alter the ranking formula or persist after reload.
 

@@ -167,7 +167,7 @@ export function ControlsMenu({
       <p className="controls-menu__demo" role="note">
         <strong>{isStatic ? 'Static demo' : 'Backend mode'}</strong>
         {isStatic
-          ? 'Recommendations use the built-in 100-song catalog. Voice stays in the browser.'
+          ? 'Recommendations use the built-in 108-song catalog. Voice stays in the browser.'
           : 'Recommendations and optional speech use FastAPI, with browser voice available.'}
       </p>
     </section>
