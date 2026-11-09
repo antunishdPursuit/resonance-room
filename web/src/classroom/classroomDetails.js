@@ -2,12 +2,13 @@ import * as THREE from 'three'
 import { createTeacherDetails } from './classroomTeacherDetails.js'
 import { createWallDetails } from './classroomWallDetails.js'
 
-export function createClassroomDetails(classroomMeshes) {
+export function createClassroomDetails(classroomMeshes, layout = {}) {
   const object3d = new THREE.Group()
   object3d.name = 'Classroom shelf and window details'
   const teacherDetails = createTeacherDetails(classroomMeshes)
+  teacherDetails.object3d.position.z += layout.front ?? 0
   object3d.add(teacherDetails.object3d)
-  const wallDetails = createWallDetails(classroomMeshes)
+  const wallDetails = createWallDetails(classroomMeshes, { layout })
   object3d.add(wallDetails.object3d)
   const geometries = new Set()
   const materials = new Set()
@@ -144,8 +145,12 @@ export function createClassroomDetails(classroomMeshes) {
     const center = clock.geometry.boundingBox.getCenter(new THREE.Vector3())
     clock.geometry = geometry(clock.geometry.clone())
     clock.geometry.translate(-center.x, -center.y, -center.z)
-    clock.position.set(2.7, 2.55, -4.72)
+    clock.position.set(2.7, 2.55, -4.72 - (layout.rear ?? 0))
     clock.rotation.y = Math.PI
+  }
+  for (const child of object3d.children) {
+    if (/Shelf books|Book spine|Storage/.test(child.name)) child.position.z -= layout.rear ?? 0
+    if (child.name.startsWith('Window plant')) child.position.x += layout.side ?? 0
   }
   object3d.updateMatrixWorld(true)
   return {

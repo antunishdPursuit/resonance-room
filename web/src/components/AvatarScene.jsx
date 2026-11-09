@@ -37,6 +37,7 @@ import {
 } from '../classroom/classroomMovementEnvironment.js'
 import { createClassroomCampusEnvironment } from '../classroom/classroomCampusEnvironment.js'
 import { createClassroomDetails } from '../classroom/classroomDetails.js'
+import { applyClassroomLayout } from '../classroom/classroomLayout.js'
 import { completeClassroomCampusViews } from '../classroom/classroomCampusViews.js'
 import {
   applyClassroomAppearance,
@@ -358,6 +359,7 @@ export default function AvatarScene({ onBackHome }) {
     let campusViews = null
     let classroomAppearance = null
     let classroomDetails = null
+    let classroomLayout = null
     let classroomAtmosphere = null
     let cameraBlockers = null
     let sceneOcclusionMeshes = null
@@ -453,7 +455,9 @@ export default function AvatarScene({ onBackHome }) {
         }
 
         scene.add(gltf.scene)
+        classroomLayout = applyClassroomLayout(gltf.scene, gltf.parser)
         recommendationBoard = createClassroomRecommendationBoard()
+        recommendationBoard.object3d.position.z += classroomLayout.front ?? 0
         recommendationBoard.update(recommendationsRef.current)
         recommendationBoard.setSelectedSongs(pickedSongsRef.current)
         recommendationBoardRef.current = recommendationBoard
@@ -463,13 +467,16 @@ export default function AvatarScene({ onBackHome }) {
           parser: gltf.parser,
         })
         classroomAppearance = applyClassroomAppearance(movementEnvironment.classroomMeshes)
-        classroomDetails = createClassroomDetails(movementEnvironment.classroomMeshes)
+        classroomDetails = createClassroomDetails(
+          movementEnvironment.classroomMeshes,
+          classroomLayout,
+        )
         scene.add(classroomDetails.object3d)
         campusEnvironment = createClassroomCampusEnvironment({
           roomBounds: movementEnvironment.walkableBounds,
         })
         scene.add(campusEnvironment.object3d)
-        campusViews = completeClassroomCampusViews(campusEnvironment)
+        campusViews = completeClassroomCampusViews(campusEnvironment, classroomLayout)
         classroomAtmosphere = applyClassroomAtmosphere(campusEnvironment)
         const importedRoomShells = movementEnvironment.classroomMeshes.filter(
           (mesh) => mesh.userData.classroomSource?.nodeIndex === 52,
@@ -871,6 +878,7 @@ export default function AvatarScene({ onBackHome }) {
       recommendationBoardRef.current = null
       classroomAppearance?.dispose()
       classroomDetails?.dispose()
+      classroomLayout?.dispose()
       classroomLighting.dispose()
       VRMUtils.deepDispose(scene)
       vrmRef.current = null

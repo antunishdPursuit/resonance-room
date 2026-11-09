@@ -93,7 +93,10 @@ function createArtworkTexture() {
   return texture
 }
 
-export function createWallDetails(classroomMeshes, { createTexture = createArtworkTexture } = {}) {
+export function createWallDetails(
+  classroomMeshes,
+  { createTexture = createArtworkTexture, layout = {} } = {},
+) {
   const object3d = new THREE.Group()
   object3d.name = 'Classroom music and wall artwork'
   const resources = new Set()
@@ -159,6 +162,10 @@ export function createWallDetails(classroomMeshes, { createTexture = createArtwo
       object3d.add(mesh)
       own(mesh)
     }
+  }
+  for (const child of object3d.children) {
+    if (child.name === 'Auxiliary chalk music') child.position.z += layout.front ?? 0
+    else child.position.x -= layout.side ?? 0
   }
   object3d.updateMatrixWorld(true)
   return {
