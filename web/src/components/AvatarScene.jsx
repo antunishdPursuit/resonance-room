@@ -263,7 +263,7 @@ export default function AvatarScene({ onBackHome }) {
     }
   }, [])
 
-  const sendProfileMessage = useEffectEvent((text) => sendMessage(text))
+  const sendProfileMessage = useEffectEvent((text) => sendMessage(text, { tasteSummary: true }))
 
   useEffect(() => {
     if (pickedSongs.length < 5 || profileBuilt || loading || chatExchangeRef.current.isBusy())
@@ -933,7 +933,7 @@ export default function AvatarScene({ onBackHome }) {
     speakRef.current?.(text)
   }
 
-  async function sendMessage(text) {
+  async function sendMessage(text, { tasteSummary = false } = {}) {
     // Reserve space for both the user's message and Riri's reply.
     if (!chatExchangeRef.current.tryStart(messagesRef.current.length)) return
 
@@ -947,6 +947,7 @@ export default function AvatarScene({ onBackHome }) {
       const data = await REQUEST_CHAT_REPLY(requestHistory, {
         tasteProfile: deriveTasteProfile(pickedSongsRef.current),
         likedSongs: pickedSongsRef.current,
+        tasteSummary,
       })
       const reply = data.response
 

@@ -14,6 +14,27 @@ const MESSAGES = [
 ]
 const API_MESSAGES = MESSAGES.map(({ role, content }) => ({ role, content }))
 
+test('explicit five-like summary intent survives an empty backend recommendation list', async () => {
+  let sent
+  const summary = 'Your picks suggest expressive vocals. No new matches were found.'
+  const likedSongs = Array.from({ length: 5 }, (_, i) => ({
+    title: `Like ${i}`,
+    artist: `Artist ${i}`,
+  }))
+  const requestReply = createChatClient({
+    appConfig: createAppConfig({ mode: 'backend' }),
+    fetchImpl: async (_url, options) => {
+      sent = JSON.parse(options.body)
+      return { ok: true, json: async () => ({ response: summary, recommendations: [] }) }
+    },
+  })
+  const reply = await requestReply(MESSAGES, { likedSongs, tasteSummary: true })
+  assert.equal(sent.taste_summary, true)
+  assert.deepEqual(sent.liked_songs, likedSongs)
+  assert.equal(reply.response, summary)
+  assert.deepEqual(reply.recommendations, [])
+})
+
 test('uses the local recommender without fetching in static mode', async () => {
   let fetchCalled = false
   const requestReply = createChatClient({

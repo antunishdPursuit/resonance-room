@@ -105,6 +105,7 @@ export function createChatClient({
         messages: requestMessages,
         seen_songs: songIdentities(previouslyRecommendedSongs(messages)),
         liked_songs: songIdentities(context.likedSongs ?? []),
+        ...(context.tasteSummary === true ? { taste_summary: true } : {}),
       }),
     })
 
