@@ -1,3 +1,6 @@
+from backend.track_selection import artist_key, diverse_candidates, track_key
+
+
 def recommendation_calls(content):
     calls = [block for block in content if block.type == "tool_use"]
     seen = set()
@@ -22,19 +25,22 @@ def recommendation_calls(content):
     return calls
 
 
-def recommendation_results(calls, groups):
+def recommendation_results(calls, groups, *, excluded_keys=(), artist_counts=None):
+    groups = [diverse_candidates(group, artist_counts) for group in groups]
     selected = [[] for _ in groups]
-    recommendations, seen = [], set()
+    recommendations, seen, artists = [], set(excluded_keys), set()
     # Alternate among requested genres, preserving six unique display results.
     for row in range(max((len(group) for group in groups), default=0)):
         for index, group in enumerate(groups):
             if row >= len(group) or len(recommendations) == 6:
                 continue
             track = group[row]
-            key = (str(track["title"]).casefold(), str(track["artist"]).casefold())
-            if key in seen:
+            key = track_key(track)
+            artist = artist_key(track)
+            if key in seen or artist in artists:
                 continue
             seen.add(key)
+            artists.add(artist)
             recommendations.append(track)
             selected[index].append(track)
     results = [

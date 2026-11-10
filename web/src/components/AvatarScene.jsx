@@ -66,8 +66,12 @@ import {
 import { isSongSelected, removeSongSelection, toggleSongSelection } from '../ui/songSelection.js'
 import { calculateSpeechBubblePosition } from '../ui/speechBubblePosition.js'
 import { createAppConfig } from '../config/appConfig.js'
-import { createChatClient } from '../chat/chatClient.js'
-import { canStartChatExchange, MAX_CHAT_MESSAGES } from '../chat/chatSession.js'
+import { createChatClient, SessionSongLimitError } from '../chat/chatClient.js'
+import {
+  canStartChatExchange,
+  createChatExchangeGuard,
+  MAX_CHAT_MESSAGES,
+} from '../chat/chatSession.js'
 import { GUIDED_VIBES } from '../recommendations/fallbackRecommender.js'
 import { deriveTasteProfile } from '../recommendations/tasteProfile.js'
 import { createBackendVoiceClient } from '../voice/backendVoiceClient.js'
@@ -176,6 +180,7 @@ export default function AvatarScene({ onBackHome }) {
   const [roomLoadFailed, setRoomLoadFailed] = useState(false)
   const [openingGreetingReady, setOpeningGreetingReady] = useState(false)
   const messagesRef = useRef([])
+  const chatExchangeRef = useRef(createChatExchangeGuard())
   const recommendationsRef = useRef([])
   const pickedSongsRef = useRef([])
   const voiceEnabledRef = useRef(false)
@@ -260,7 +265,14 @@ export default function AvatarScene({ onBackHome }) {
   const sendProfileMessage = useEffectEvent((text) => sendMessage(text))
 
   useEffect(() => {
-    if (pickedSongs.length < 5 || profileBuilt) return
+    if (
+      pickedSongs.length < 5 ||
+      profileBuilt ||
+      loading ||
+      chatExchangeRef.current.isBusy() ||
+      !canStartChatExchange(messages.length)
+    )
+      return
 
     if (APP_CONFIG.usesBackend) {
       setProfileBuilt(true)
@@ -284,7 +296,7 @@ export default function AvatarScene({ onBackHome }) {
     ])
     showSpeechBubbleTemporarily()
     speak(tasteProfile.summary)
-  }, [pickedSongs, profileBuilt])
+  }, [pickedSongs, profileBuilt, loading, messages.length])
 
   function clearOpeningTimers() {
     clearTimeout(openingTimersRef.current.fade)
@@ -926,7 +938,7 @@ export default function AvatarScene({ onBackHome }) {
 
   async function sendMessage(text) {
     // Reserve space for both the user's message and Riri's reply.
-    if (!canStartChatExchange(messagesRef.current.length)) return
+    if (!chatExchangeRef.current.tryStart(messagesRef.current.length)) return
 
     const userMsg = { role: 'user', content: text }
     const history = [...messagesRef.current, userMsg]
@@ -937,6 +949,7 @@ export default function AvatarScene({ onBackHome }) {
     try {
       const data = await REQUEST_CHAT_REPLY(requestHistory, {
         tasteProfile: deriveTasteProfile(pickedSongsRef.current),
+        likedSongs: pickedSongsRef.current,
       })
       const reply = data.response
 
@@ -956,12 +969,16 @@ export default function AvatarScene({ onBackHome }) {
         ...prev,
         {
           role: 'assistant',
-          content: "I couldn't prepare recommendations right now. Please try again.",
+          content:
+            err instanceof SessionSongLimitError
+              ? err.message
+              : "I couldn't prepare recommendations right now. Please try again.",
           kind: 'error',
         },
       ])
       showSpeechBubbleTemporarily()
     } finally {
+      chatExchangeRef.current.finish()
       setLoading(false)
     }
   }

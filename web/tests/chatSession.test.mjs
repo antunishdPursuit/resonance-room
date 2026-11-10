@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { canStartChatExchange, MAX_CHAT_MESSAGES } from '../src/chat/chatSession.js'
+import {
+  canStartChatExchange,
+  createChatExchangeGuard,
+  MAX_CHAT_MESSAGES,
+} from '../src/chat/chatSession.js'
 import { createChatClient } from '../src/chat/chatClient.js'
 import { createAppConfig } from '../src/config/appConfig.js'
 import { deriveTasteProfile } from '../src/recommendations/tasteProfile.js'
@@ -35,4 +39,32 @@ test('five static likes and nine exchanges expose reset before a request would b
   assert.equal(canStartChatExchange(messages.length), true)
   const restarted = await request([{ role: 'user', content: 'Focus' }])
   assert.equal(restarted.recommendations.length, 6)
+})
+
+test('a pending exchange reserves history until its reply or failure completes', async () => {
+  const guard = createChatExchangeGuard()
+  let release
+  const pending = new Promise((resolve) => {
+    release = resolve
+  })
+  let messageCount = 2
+  assert.equal(guard.tryStart(messageCount), true)
+  const work = (async () => {
+    try {
+      await pending
+      messageCount += 2
+    } finally {
+      guard.finish()
+    }
+  })()
+  // A fifth-like request must defer rather than reuse the outstanding snapshot.
+  assert.equal(guard.isBusy(), true)
+  assert.equal(guard.tryStart(messageCount), false)
+  release()
+  await work
+  assert.equal(messageCount, 4)
+  assert.equal(guard.tryStart(messageCount), true)
+  guard.finish()
+  assert.equal(guard.tryStart(20), false)
+  assert.equal(guard.isBusy(), false)
 })

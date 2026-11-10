@@ -1,5 +1,6 @@
 import sys
 import os
+from collections import Counter
 from urllib.parse import urlparse
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
@@ -7,13 +8,14 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 from typing import Annotated, Literal
 import anthropic
 import httpx
 from dotenv import load_dotenv
 from backend.recommendation_tools import recommendation_calls, recommendation_results
 from backend.discovery import discover, is_bare_music_request
+from backend.track_selection import artist_key, track_key
 
 load_dotenv()
 
@@ -74,7 +76,10 @@ SYSTEM_PROMPT = (
     "Only supply a genre the user actually requested; never infer one from a mood or activity. "
     "Use mood for activities such as focused, chill, energetic, happy, sad or relaxed. "
     "Omit both criteria for broad discovery. Results use community tag evidence, not measured "
-    "audio features. Do not claim verified energy or mood; acknowledge fewer matches when needed."
+    "audio features. Do not claim verified energy or mood; acknowledge fewer matches when needed. "
+    "Only mention songs supplied in the latest tool results. Those results exclude the "
+    "session's seen and liked songs and contain at most one song per artist. "
+    "If results are sparse, do not invent additional songs or promise more than was returned."
 )
 
 TOOLS = [
@@ -225,8 +230,10 @@ def _format_tracks(tracks: list) -> list[dict]:
         if (
             isinstance(name, str)
             and name.strip()
+            and len(name.strip()) <= 512
             and isinstance(artist_name, str)
             and artist_name.strip()
+            and len(artist_name.strip()) <= 512
         ):
             raw_url = track.get("url", "")
             safe_url = ""
@@ -251,8 +258,15 @@ class Message(BaseModel):
     content: Annotated[str, Field(min_length=1, max_length=2000)]
 
 
+class SongIdentity(BaseModel):
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=512)]
+    artist: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=512)]
+
+
 class ChatRequest(BaseModel):
     messages: Annotated[list[Message], Field(min_length=1, max_length=20)]
+    seen_songs: Annotated[list[SongIdentity], Field(max_length=120)] = Field(default_factory=list)
+    liked_songs: Annotated[list[SongIdentity], Field(max_length=120)] = Field(default_factory=list)
 
 
 @app.get("/health")
@@ -277,6 +291,11 @@ async def chat(request: ChatRequest):
         )
 
     history = [{"role": m.role, "content": m.content} for m in request.messages]
+    session_tracks = {
+        track_key(song.model_dump()): song.model_dump()
+        for song in [*request.seen_songs, *request.liked_songs]
+    }
+    artist_counts = Counter(artist_key(song) for song in session_tracks.values())
 
     last_msg = request.messages[-1].content.lower()
     # Bare activity replies fit the composer's music context; longer activity
@@ -308,14 +327,30 @@ async def chat(request: ChatRequest):
             ) from exc
 
         try:
-            groups = await discover(tool_blocks, fetch_tracks, fetch_track_tags, _format_tracks)
+            groups = await discover(
+                tool_blocks,
+                fetch_tracks,
+                fetch_track_tags,
+                _format_tracks,
+                excluded_keys=session_tracks,
+                artist_counts=artist_counts,
+            )
         except (ProviderError, TimeoutError) as exc:
             raise HTTPException(status_code=502, detail="Music data provider unavailable") from exc
 
-        recommendations, tool_results = recommendation_results(tool_blocks, groups)
+        recommendations, tool_results = recommendation_results(
+            tool_blocks,
+            groups,
+            excluded_keys=session_tracks,
+            artist_counts=artist_counts,
+        )
         if not recommendations:
             return {
-                "response": "No matching tracks found. Try another genre or mood.",
+                "response": (
+                    "No unseen matching tracks found. Try another genre or mood, or start a new chat."
+                    if session_tracks
+                    else "No matching tracks found. Try another genre or mood."
+                ),
                 "recommendations": [],
             }
 

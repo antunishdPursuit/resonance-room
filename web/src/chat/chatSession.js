@@ -4,3 +4,18 @@ export const MAX_CHAT_MESSAGES = 20
 export function canStartChatExchange(messageCount) {
   return messageCount + 2 <= MAX_CHAT_MESSAGES
 }
+
+export function createChatExchangeGuard() {
+  let busy = false
+  return {
+    isBusy: () => busy,
+    tryStart(messageCount) {
+      if (busy || !canStartChatExchange(messageCount)) return false
+      busy = true
+      return true
+    },
+    finish() {
+      busy = false
+    },
+  }
+}

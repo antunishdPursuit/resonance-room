@@ -19,7 +19,7 @@ def test_bare_activity_replies_fetch_music_without_forcing_longer_nonmusic_quest
 def test_discovery_deadline_returns_safe_error_without_followup(monkeypatch):
     calls = install_assistant(monkeypatch)
 
-    async def timeout(*_):
+    async def timeout(*_, **_kwargs):
         raise TimeoutError("private details")
 
     monkeypatch.setattr(api, "discover", timeout)

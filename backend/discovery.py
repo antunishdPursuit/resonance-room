@@ -2,6 +2,8 @@
 
 import asyncio
 
+from backend.track_selection import diverse_candidates, track_key
+
 ALIASES = {
     "lo fi": "lofi",
     "hip hop": "hiphop",
@@ -41,10 +43,6 @@ def normalize(tag):
     return ALIASES.get(tag, tag)
 
 
-def track_key(track):
-    return (track["title"].casefold(), track["artist"].casefold())
-
-
 def is_bare_music_request(message):
     label = normalize(message.strip(" .!?"))
     return label in {"surprise me", *RELATED} or any(label in tags for tags in RELATED.values())
@@ -82,21 +80,26 @@ def rank_tracks(criteria, candidates, evidence):
     return [track for _, _, track in ranked]
 
 
-async def discover(calls, fetch_tracks, fetch_tags, format_tracks):
-    """At most 8 queries, 24 candidates/tag lookups and 4 concurrent lookups.
+async def discover(
+    calls, fetch_tracks, fetch_tags, format_tracks, *, excluded_keys=(), artist_counts=None
+):
+    """At most 8 queries of 100 tracks; 96 candidates or 24 mood lookups.
 
     Per-request deduplication only: no persistent cache or fabricated metadata.
     Unknown mood/genre evidence yields fewer results, not relaxed constraints.
     """
     if not 1 <= len(calls) <= 4:
         raise ValueError("Expected one to four recommendation calls")
+    excluded = set(excluded_keys)
+    needs_mood = any(call.input.get("mood") for call in calls)
+    pool_limit = 24 if needs_mood else 96
     async with asyncio.timeout(20):
         queries, groups, evidence = {}, [], {}
         for call in calls:
             sources = []
             for tag in query_tags(call.input):
                 if tag not in queries:
-                    queries[tag] = format_tracks(await fetch_tracks(tag, limit=12))[:12]
+                    queries[tag] = format_tracks(await fetch_tracks(tag, limit=100))[:100]
                 for track in queries[tag]:
                     evidence.setdefault(track_key(track), set())
                     if tag is not None:
@@ -105,16 +108,20 @@ async def discover(calls, fetch_tracks, fetch_tags, format_tracks):
             group = []
             for row in range(max(map(len, sources), default=0)):
                 for source in sources:
-                    if row < len(source) and source[row] not in group:
+                    if (
+                        row < len(source)
+                        and track_key(source[row]) not in excluded
+                        and source[row] not in group
+                    ):
                         group.append(source[row])
-            groups.append(group)
+            groups.append(diverse_candidates(group, artist_counts))
         # Round-robin across tools so one request cannot consume the entire pool.
         pool = {}
         for row in range(max(map(len, groups), default=0)):
             for group in groups:
-                if row < len(group) and len(pool) < 24:
+                if row < len(group) and len(pool) < pool_limit:
                     pool.setdefault(track_key(group[row]), group[row])
-        if any(call.input.get("mood") for call in calls):
+        if needs_mood:
             semaphore = asyncio.Semaphore(4)
 
             async def enrich(key, track):

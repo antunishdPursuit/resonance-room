@@ -53,7 +53,7 @@ def test_discovery_checks_mood_even_when_genre_has_results_and_deduplicates():
 
     calls = [SimpleNamespace(input={"genre": "jazz", "mood": "focused"})]
     result = asyncio.run(discover(calls, fetch, tags, lambda tracks: tracks))
-    assert fetched == [("jazz", 12), ("study", 12)]
+    assert fetched == [("jazz", 100), ("study", 100)]
     assert result == [[other]]
 
 

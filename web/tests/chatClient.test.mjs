@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { createChatClient } from '../src/chat/chatClient.js'
+import { createChatClient, SessionSongLimitError } from '../src/chat/chatClient.js'
 import { createAppConfig } from '../src/config/appConfig.js'
 
 const MESSAGES = [
@@ -43,21 +43,26 @@ test('passes recommendation history and taste context to the static fallback', a
   const priorSong = { title: 'Earlier Song', artist: 'Earlier Artist' }
   const tasteProfile = { genre: 'lofi' }
 
-  await requestReply([
-    { role: 'assistant', content: 'Try this.', songs: [priorSong] },
-    { role: 'user', content: 'Chill' },
-    { role: 'assistant', content: 'Try these.', songs: [] },
-    { role: 'user', content: 'Chill' },
-  ], { tasteProfile })
+  await requestReply(
+    [
+      { role: 'assistant', content: 'Try this.', songs: [priorSong] },
+      { role: 'user', content: 'Chill' },
+      { role: 'assistant', content: 'Try these.', songs: [] },
+      { role: 'user', content: 'Chill' },
+    ],
+    { tasteProfile },
+  )
 
-  assert.deepEqual(calls, [{
-    message: 'Chill',
-    options: {
-      excludeSongs: [priorSong],
-      repeatCount: 2,
-      tasteProfile,
+  assert.deepEqual(calls, [
+    {
+      message: 'Chill',
+      options: {
+        excludeSongs: [priorSong],
+        repeatCount: 2,
+        tasteProfile,
+      },
     },
-  }])
+  ])
 })
 
 test('sends the bounded conversation to FastAPI in backend mode', async () => {
@@ -90,10 +95,70 @@ test('sends the bounded conversation to FastAPI in backend mode', async () => {
   assert.equal(requests.length, 1)
   assert.equal(requests[0].url, 'http://127.0.0.1:8001/chat')
   assert.equal(requests[0].options.method, 'POST')
-  assert.deepEqual(
-    JSON.parse(requests[0].options.body),
-    { messages: API_MESSAGES },
+  assert.deepEqual(JSON.parse(requests[0].options.body), {
+    messages: API_MESSAGES,
+    seen_songs: [],
+    liked_songs: [],
+  })
+})
+
+test('backend sends seen and liked identities separately from the model conversation', async () => {
+  const bodies = []
+  const requestReply = createChatClient({
+    appConfig: createAppConfig({ mode: 'backend' }),
+    fetchImpl: async (_url, options) => {
+      bodies.push(JSON.parse(options.body))
+      return { ok: true, json: async () => ({ response: 'New tracks.', recommendations: [] }) }
+    },
+  })
+  const seen = { title: ' Seen ', artist: ' Artist ', url: 'https://example.com' }
+  const liked = { title: 'Liked', artist: 'Another', secretMetadata: 'never sent' }
+  await requestReply(
+    [
+      { role: 'assistant', content: 'Earlier.', songs: [seen, seen, { title: 'Incomplete' }] },
+      { role: 'user', content: 'More music' },
+    ],
+    { likedSongs: [liked] },
   )
+  assert.deepEqual(bodies[0].seen_songs, [{ title: 'Seen', artist: 'Artist' }])
+  assert.deepEqual(bodies[0].liked_songs, [{ title: 'Liked', artist: 'Another' }])
+  assert.deepEqual(bodies[0].messages, [
+    { role: 'assistant', content: 'Earlier.' },
+    { role: 'user', content: 'More music' },
+  ])
+  // New chat clears display history but preserves the current liked list.
+  await requestReply([{ role: 'user', content: 'Music again' }], { likedSongs: [liked] })
+  assert.deepEqual(bodies[1].seen_songs, [])
+  assert.deepEqual(bodies[1].liked_songs, bodies[0].liked_songs)
+  const unicodeSong = { title: '🎵'.repeat(512), artist: 'Artist' }
+  await requestReply([{ role: 'user', content: 'Music' }], { likedSongs: [unicodeSong] })
+  assert.deepEqual(bodies[2].liked_songs, [unicodeSong])
+})
+
+test('retained-like overflow explains recovery and removing a like restores requests', async () => {
+  let requests = 0
+  const requestReply = createChatClient({
+    appConfig: createAppConfig({ mode: 'backend' }),
+    fetchImpl: async () => {
+      requests++
+      return { ok: true, json: async () => ({ response: 'Ready.', recommendations: [] }) }
+    },
+  })
+  const likedSongs = Array.from({ length: 121 }, (_, i) => ({
+    title: `Song ${i}`,
+    artist: 'Artist',
+  }))
+  await assert.rejects(
+    requestReply([{ role: 'user', content: 'Music' }], { likedSongs }),
+    (error) => {
+      assert.ok(error instanceof SessionSongLimitError)
+      assert.match(error.message, /remove some liked songs/)
+      return true
+    },
+  )
+  assert.equal(requests, 0)
+  await requestReply([{ role: 'user', content: 'Music' }], { likedSongs: likedSongs.slice(1) })
+  assert.equal(requests, 1)
 })
 
 test('rejects failed or malformed backend replies', async () => {
@@ -102,10 +167,7 @@ test('rejects failed or malformed backend replies', async () => {
     fetchImpl: async () => ({ ok: false, status: 502 }),
   })
 
-  await assert.rejects(
-    failedRequest(MESSAGES),
-    /Chat request failed with status 502/,
-  )
+  await assert.rejects(failedRequest(MESSAGES), /Chat request failed with status 502/)
   const malformedRequest = createChatClient({
     appConfig: createAppConfig({ mode: 'backend' }),
     fetchImpl: async () => ({
@@ -116,10 +178,7 @@ test('rejects failed or malformed backend replies', async () => {
     }),
   })
 
-  await assert.rejects(
-    malformedRequest(MESSAGES),
-    /did not include a reply/,
-  )
+  await assert.rejects(malformedRequest(MESSAGES), /did not include a reply/)
 })
 
 test('requires a non-empty user message in either mode', async () => {
