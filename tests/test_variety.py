@@ -99,6 +99,7 @@ def test_exhausted_pool_returns_no_unseen_message_without_paid_followup(monkeypa
     )
     assert response.status_code == 200 and response.json()["recommendations"] == []
     assert "No unseen matching tracks" in response.json()["response"]
+    assert "new chat" not in response.json()["response"]
     assert len(calls) == 1
 
 

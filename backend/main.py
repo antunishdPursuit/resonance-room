@@ -347,7 +347,7 @@ async def chat(request: ChatRequest):
         if not recommendations:
             return {
                 "response": (
-                    "No unseen matching tracks found. Try another genre or mood, or start a new chat."
+                    "No unseen matching tracks found. Try another genre or mood."
                     if session_tracks
                     else "No matching tracks found. Try another genre or mood."
                 ),
