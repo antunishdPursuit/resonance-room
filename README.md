@@ -181,6 +181,8 @@ ESLint dependency advisory; JSX/glob behavior is covered by quality tests.
 
 Local discovery requests up to100 candidates per Last.fm query and prioritizes less-seen artists. Replies contain up to six unseen tracks with at most one per artist; fewer are returned when the bounded pool has insufficient matches. Genre and mood evidence remain required. Starting a new chat clears the seen history; retained likes remain excluded until removed. This does not create a persistent taste model or change the static demo.
 
+Mood enrichment checks at most24 tracks from a pool balanced across query sources and artists. This bounded search does not inspect every fetched track or exhaust Last.fm's catalog.
+
 ## Current Limits
 
 - The static catalog contains 108 synthetic records and ten preset vibes.

@@ -66,6 +66,58 @@ def test_less_seen_artists_are_preferred_without_banning_previous_artists():
     assert [s["artist"] for s in selected] == ["Artist 3", "Artist 4", "Familiar"]
 
 
+@pytest.mark.parametrize("excluded_count,matching_index", [(0, 1), (10, 21)])
+def test_mood_lookup_preserves_genre_source_when_mood_chart_has_many_artists(
+    excluded_count, matching_index
+):
+    genre = [song(i, "Shared genre artist") for i in range(30)]
+    mood = [song(i) for i in range(100, 200)]
+    enriched = []
+
+    async def fetch(tag, limit):
+        return genre if tag == "jazz" else mood
+
+    async def tags(track):
+        enriched.append(track)
+        return ["chill"] if track == genre[matching_index] else ["energetic", "rock"]
+
+    calls = [SimpleNamespace(id="a", input={"genre": "jazz", "mood": "chill"})]
+    groups = asyncio.run(
+        discover(
+            calls,
+            fetch,
+            tags,
+            lambda rows: rows,
+            excluded_keys={track_key(track) for track in genre[:excluded_count]},
+        )
+    )
+    selected, _ = recommendation_results(calls, groups)
+    assert len(enriched) == 24
+    assert genre[matching_index] in enriched
+    assert selected == [genre[matching_index]]
+
+
+def test_mood_lookup_covers_later_genre_artists_without_one_artist_using_the_budget():
+    later = [song(i) for i in range(30, 36)]
+    genre = [song(i, "Dominant") for i in range(30)] + later
+    mood = [song(i) for i in range(100, 200)]
+    enriched = []
+
+    async def fetch(tag, limit):
+        return genre if tag == "jazz" else mood
+
+    async def tags(track):
+        enriched.append(track)
+        return ["chill"] if track in later else ["energetic", "rock"]
+
+    calls = [SimpleNamespace(id="a", input={"genre": "jazz", "mood": "chill"})]
+    groups = asyncio.run(discover(calls, fetch, tags, lambda rows: rows))
+    selected, _ = recommendation_results(calls, groups)
+    assert len(enriched) == 24
+    assert all(track in enriched for track in later)
+    assert selected == later
+
+
 def test_seen_and_liked_api_contract_excludes_tracks_from_cards_and_tool_results(monkeypatch):
     tracks = [{"name": f"Track {i}", "artist": {"name": f"Artist {i}"}} for i in range(20)]
     calls, _ = install_provider(monkeypatch, [tool("a", "jazz")], {"jazz": tracks})

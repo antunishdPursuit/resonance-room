@@ -83,7 +83,7 @@ def rank_tracks(criteria, candidates, evidence):
 async def discover(
     calls, fetch_tracks, fetch_tags, format_tracks, *, excluded_keys=(), artist_counts=None
 ):
-    """At most 8 queries of 100 tracks; 96 candidates or 24 mood lookups.
+    """At most 8 queries of 100 tracks; 96 candidates and 24 mood lookups.
 
     Per-request deduplication only: no persistent cache or fabricated metadata.
     Unknown mood/genre evidence yields fewer results, not relaxed constraints.
@@ -92,7 +92,7 @@ async def discover(
         raise ValueError("Expected one to four recommendation calls")
     excluded = set(excluded_keys)
     needs_mood = any(call.input.get("mood") for call in calls)
-    pool_limit = 24 if needs_mood else 96
+    pool_limit = 96
     async with asyncio.timeout(20):
         queries, groups, evidence = {}, [], {}
         for call in calls:
@@ -104,7 +104,10 @@ async def discover(
                     evidence.setdefault(track_key(track), set())
                     if tag is not None:
                         evidence[track_key(track)].add(tag)
-                sources.append(queries[tag])
+                # Balance within each source, then interleave sources so a
+                # diverse mood chart cannot displace the requested genre.
+                unseen = [track for track in queries[tag] if track_key(track) not in excluded]
+                sources.append(diverse_candidates(unseen, artist_counts))
             group = []
             for row in range(max(map(len, sources), default=0)):
                 for source in sources:
@@ -114,7 +117,7 @@ async def discover(
                         and source[row] not in group
                     ):
                         group.append(source[row])
-            groups.append(diverse_candidates(group, artist_counts))
+            groups.append(group)
         # Round-robin across tools so one request cannot consume the entire pool.
         pool = {}
         for row in range(max(map(len, groups), default=0)):
@@ -129,7 +132,7 @@ async def discover(
                     tags = await fetch_tags(track)
                 evidence[key].update(tags or [])
 
-            await asyncio.gather(*(enrich(key, track) for key, track in pool.items()))
+            await asyncio.gather(*(enrich(key, track) for key, track in list(pool.items())[:24]))
         return [
             rank_tracks(call.input, [t for t in group if track_key(t) in pool], evidence)
             for call, group in zip(calls, groups)
