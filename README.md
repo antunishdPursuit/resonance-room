@@ -177,6 +177,9 @@ ESLint dependency advisory; JSX/glob behavior is covered by quality tests.
 - Likes, recent recommendations, transcript messages, and the taste summary remain in the current browser session and are not persisted by the app.
 - Browser speech stays on the visitor's browser-supported speech path.
 - Optional backend providers receive only the data sent while backend mode is explicitly configured.
+- Local AI requests include song titles/artists already displayed in the current chat and the current liked list, so the backend can exclude them. These lists are not stored on the server or added to Claude's prompt; the five-like taste message still lists its selected songs.
+
+Local discovery requests up to100 candidates per Last.fm query and prioritizes less-seen artists. Replies contain up to six unseen tracks with at most one per artist; fewer are returned when the bounded pool has insufficient matches. Genre and mood evidence remain required. Starting a new chat clears the seen history; retained likes remain excluded until removed. This does not create a persistent taste model or change the static demo.
 
 ## Current Limits
 
