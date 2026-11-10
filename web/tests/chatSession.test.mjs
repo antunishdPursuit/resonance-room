@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  canAppendTasteSummary,
   canStartChatExchange,
   createChatExchangeGuard,
   MAX_CHAT_MESSAGES,
@@ -39,6 +40,29 @@ test('five static likes and nine exchanges expose reset before a request would b
   assert.equal(canStartChatExchange(messages.length), true)
   const restarted = await request([{ role: 'user', content: 'Focus' }])
   assert.equal(restarted.recommendations.length, 6)
+})
+
+test('static taste summary uses one slot while a backend exchange reserves two', async () => {
+  for (const count of [18, 19, 20]) {
+    assert.equal(canAppendTasteSummary(count), count < 20)
+    assert.equal(canStartChatExchange(count), count <= 18)
+  }
+  const request = createChatClient({ appConfig: createAppConfig() })
+  const messages = []
+  let firstSongs
+  for (let i = 0; i < 9; i++) {
+    messages.push({ role: 'user', content: 'Chill' })
+    const reply = await request(messages)
+    firstSongs ??= reply.recommendations
+    messages.push({ role: 'assistant', content: reply.response, songs: reply.recommendations })
+  }
+  const taste = deriveTasteProfile(firstSongs.slice(0, 5))
+  assert.ok(taste)
+  assert.equal(messages.length, 18)
+  assert.equal(canAppendTasteSummary(messages.length), true)
+  messages.push({ role: 'assistant', content: taste.summary, kind: 'profile' })
+  assert.equal(messages.length, 19)
+  assert.equal(canStartChatExchange(messages.length), false)
 })
 
 test('a pending exchange reserves history until its reply or failure completes', async () => {

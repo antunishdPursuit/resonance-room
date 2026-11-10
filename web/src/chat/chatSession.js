@@ -5,6 +5,10 @@ export function canStartChatExchange(messageCount) {
   return messageCount + 2 <= MAX_CHAT_MESSAGES
 }
 
+export function canAppendTasteSummary(messageCount) {
+  return messageCount + 1 <= MAX_CHAT_MESSAGES
+}
+
 export function createChatExchangeGuard() {
   let busy = false
   return {

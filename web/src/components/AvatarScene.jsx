@@ -68,6 +68,7 @@ import { calculateSpeechBubblePosition } from '../ui/speechBubblePosition.js'
 import { createAppConfig } from '../config/appConfig.js'
 import { createChatClient, SessionSongLimitError } from '../chat/chatClient.js'
 import {
+  canAppendTasteSummary,
   canStartChatExchange,
   createChatExchangeGuard,
   MAX_CHAT_MESSAGES,
@@ -265,16 +266,11 @@ export default function AvatarScene({ onBackHome }) {
   const sendProfileMessage = useEffectEvent((text) => sendMessage(text))
 
   useEffect(() => {
-    if (
-      pickedSongs.length < 5 ||
-      profileBuilt ||
-      loading ||
-      chatExchangeRef.current.isBusy() ||
-      !canStartChatExchange(messages.length)
-    )
+    if (pickedSongs.length < 5 || profileBuilt || loading || chatExchangeRef.current.isBusy())
       return
 
     if (APP_CONFIG.usesBackend) {
+      if (!canStartChatExchange(messages.length)) return
       setProfileBuilt(true)
       const songList = pickedSongs.map((s) => `"${s.title}" by ${s.artist}`).join(', ')
       const autoMsg = `I just picked 5 songs I love: ${songList}. Based on these picks, what can you tell about my music taste? Please recommend new songs I haven't heard — do not suggest any of the songs I just listed.`
@@ -282,6 +278,7 @@ export default function AvatarScene({ onBackHome }) {
       return
     }
 
+    if (!canAppendTasteSummary(messages.length)) return
     const tasteProfile = deriveTasteProfile(pickedSongs)
     if (!tasteProfile) return
 
